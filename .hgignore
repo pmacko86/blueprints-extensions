@@ -1,0 +1,19 @@
+syntax: glob
+*~
+*.class
+.classpath
+.directory
+.DS_Store
+*.ipch
+*.kate-swp
+*.lastbuildstate
+*.opensdf
+*.orig
+.project
+*.sdf
+.settings/**
+*.suo
+*.swo
+*.swp
+target/**
+
