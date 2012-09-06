@@ -9,6 +9,7 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.HighlyAvailableGraphDatabase;
+import org.neo4j.kernel.impl.cache.CacheProvider;
 import org.neo4j.kernel.impl.core.NodeManager;
 
 import com.tinkerpop.blueprints.Edge;
@@ -27,6 +28,7 @@ import com.tinkerpop.blueprints.impls.neo4j.Neo4jVertex;
 public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph {
 	
 	protected NodeManager nodeManager;
+	protected CacheProvider cacheProvider;
 	
 	
 	/*
@@ -65,6 +67,7 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
 	 * Initialize the object
 	 */
 	private void init() {
+		
 		GraphDatabaseService rawGraph = getRawGraph();
         if (rawGraph instanceof HighlyAvailableGraphDatabase) {
         	nodeManager = ((HighlyAvailableGraphDatabase) rawGraph).getNodeManager();
@@ -75,8 +78,20 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
         else {
         	throw new IllegalStateException("Unrecognized type of neo4j GraphDatabaseService");
         }
+        
+    	cacheProvider = nodeManager.getCacheType();
 	}
-    
+	
+	
+	/**
+	 * Get the name of the cache provider
+	 * 
+	 * @return the name of the cache provider
+	 */
+	public String getCacheProviderName() {
+		return cacheProvider.getName();
+	}
+
 	
 	/**
 	 * Return the number of vertices
