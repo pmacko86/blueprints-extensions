@@ -13,6 +13,8 @@ import java.sql.SQLException;
  * @author Daniel Margo (http://eecs.harvard.edu/~dmargo)
  */
 public class SqlGraphTest extends GraphTest {
+	
+	public static SqlGraph graph = null;
 
     public SqlGraphTest() {
     }
@@ -77,7 +79,7 @@ public class SqlGraphTest extends GraphTest {
         printTestPerformance("AutomaticIndexTestSuite", this.stopWatch());
     }*/
 
-    public void createDatabase(String name) {
+    public static void createDatabase(String name) {
         String db = System.getProperty("sqlGraphAddr");
         if (db == null) db = "//localhost/?user=dmargo&password=kitsune";
     	try {
@@ -87,15 +89,22 @@ public class SqlGraphTest extends GraphTest {
 		}
     }
 
-    public Graph getGraphInstance() {
+    public static Graph getGraphInstance() {
+    	
+    	if (graph != null) {
+    		if (!graph.isClosed()) return graph;
+    	}
+    	
+        createDatabase("graphdb_test");
+    	
         String db = System.getProperty("sqlGraphAddr");
         if (db == null) db = "//localhost/?user=dmargo&password=kitsune";
-        return new SqlGraph(db, "graphdb_test");
+        graph = new SqlGraph(db, "graphdb_test");
+        
+        return graph;
     }
 
     public void doTestSuite(final TestSuite testSuite) throws Exception {
-    	
-        createDatabase("graphdb_test");
         
         String doTest = System.getProperty("testSqlGraph");
         if (doTest == null || doTest.equals("true")) {

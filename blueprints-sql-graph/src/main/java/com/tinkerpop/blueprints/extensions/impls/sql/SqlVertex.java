@@ -6,6 +6,7 @@ import com.tinkerpop.blueprints.Query;
 import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.impls.sql.util.SqlEdgeSequence;
+import com.tinkerpop.blueprints.extensions.impls.sql.util.SqlVertexSequence;
 import com.tinkerpop.blueprints.util.StringFactory;
 
 import java.io.ByteArrayOutputStream;
@@ -153,8 +154,8 @@ public class SqlVertex extends SqlElement implements Vertex {
     }
     
     public void setProperty(final String propertyKey, final Object value) {
-    	if (propertyKey == null || propertyKey.equals("id"))
-    		throw new RuntimeException("SqlGraph: Invalid propertyKey.");
+    	if (propertyKey == null || propertyKey.equals("") || propertyKey.equals("id"))
+    		throw new IllegalArgumentException("SqlGraph: Invalid propertyKey \"" + propertyKey + "\"");
     	
         try {
         	ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -234,8 +235,10 @@ public class SqlVertex extends SqlElement implements Vertex {
 
 	@Override
 	public Iterable<Vertex> getVertices(Direction direction, String... labels) {
-		// TODO Auto-generated method stub
-		return null;
+    	if (labels.length == 0)
+        	return new SqlVertexSequence(this.graph, this.vid, direction);
+    	else
+    		return new SqlVertexSequence(this.graph, this.vid, direction, labels);
 	}
 
 	@Override

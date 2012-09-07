@@ -191,8 +191,8 @@ public class SqlEdge extends SqlElement implements Edge {
     }
     
     public void setProperty(final String propertyKey, final Object value) {    	
-    	if (propertyKey == null || propertyKey.equals("id") || propertyKey.equals("label"))
-    		throw new RuntimeException("SqlGraph: Invalid propertyKey.");
+    	if (propertyKey == null || propertyKey.equals("") || propertyKey.equals("id") || propertyKey.equals("label"))
+    		throw new IllegalArgumentException("SqlGraph: Invalid propertyKey.");
     	
         try {
         	ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -277,8 +277,8 @@ public class SqlEdge extends SqlElement implements Edge {
     	try {
     		
     		switch (direction) {
-    		case OUT: return this.outId != -1 ? new SqlVertex(graph, new Long(this.outId)) : null;
-    		case IN : return this.inId  != -1 ? new SqlVertex(graph, new Long(this.inId )) : null;
+    		case OUT: return this.outId != -1 ? new SqlVertex(graph, this.outId) : null;
+    		case IN : return this.inId  != -1 ? new SqlVertex(graph, this.inId ) : null;
     		}
 
     	} catch (RuntimeException e) {
@@ -287,7 +287,7 @@ public class SqlEdge extends SqlElement implements Edge {
     		throw new RuntimeException(e.getMessage(), e);
     	}
 
-    	throw new UnsupportedOperationException();
+    	throw new IllegalArgumentException("The Direction must be IN or OUT");
 	}
 
 }

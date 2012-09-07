@@ -9,7 +9,9 @@ import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.impls.sql.util.*;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
@@ -32,8 +34,12 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 	private String orgNamePrefix = null;
 	private String databaseName = null;
 	public Connection connection = null;
+	
 	private static Semaphore initSemaphore = new Semaphore(1);
 	private static HashMap<String, Integer> numConnectionsPerAddr = new HashMap<String, Integer>();
+	private static HashMap<String, List<SqlGraph>> connectionsPerAddr = new HashMap<String, List<SqlGraph>>();
+	private StackTraceElement[] constructorStackTrace;
+	
 	protected boolean autoCommit = false;
 	
     private final ThreadLocal<Boolean> tx = new ThreadLocal<Boolean>() {
@@ -57,6 +63,10 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 	public PreparedStatement getOutEdgesStatement;
 	public PreparedStatement getInEdgesStatement;
 	public PreparedStatement getBothEdgesStatement;
+	
+	public PreparedStatement getOutVerticesStatement;
+	public PreparedStatement getInVerticesStatement;
+	public PreparedStatement getBothVerticesStatement;
 	
 	
 	// Features
@@ -162,6 +172,9 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
             String addrExt = toString();
             if (!numConnectionsPerAddr.containsKey(addrExt)) {
             	numConnectionsPerAddr.put(addrExt, 0);
+            }
+            if (!connectionsPerAddr.containsKey(addrExt)) {
+            	connectionsPerAddr.put(addrExt, new ArrayList<SqlGraph>());
             }
 
 
@@ -325,8 +338,19 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         	getInEdgesStatement = connection.prepareStatement(
 								"select * from "+SqlGraph.this.namePrefix+"edge where inid=?");
         	getBothEdgesStatement = connection.prepareStatement(
-								"(select * from "+SqlGraph.this.namePrefix+"edge where outid=?) union " +
+								"(select * from "+SqlGraph.this.namePrefix+"edge where outid=?) union all " +
 								"(select * from "+SqlGraph.this.namePrefix+"edge where inid=?)");
+        	
+        	
+        	// Vertex in/out vertices:
+        	
+        	getOutVerticesStatement = connection.prepareStatement(
+        						"select inid, eid from "+SqlGraph.this.namePrefix+"edge where outid=?");
+        	getInVerticesStatement = connection.prepareStatement(
+								"select outid, eid from "+SqlGraph.this.namePrefix+"edge where inid=?");
+        	getBothVerticesStatement = connection.prepareStatement(
+								"(select outid as id, eid from "+SqlGraph.this.namePrefix+"edge where outid=?) union all " +
+								"(select inid  as id, eid from "+SqlGraph.this.namePrefix+"edge where inid=?)");
        	
         	
         	// Edges:
@@ -370,7 +394,10 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
             
             // Finish
             
+            constructorStackTrace = Thread.currentThread().getStackTrace();
             numConnectionsPerAddr.put(addrExt, numConnectionsPerAddr.get(addrExt) + 1);
+            connectionsPerAddr.get(addrExt).add(this);
+            
             initSemaphore.release();
 
     	} catch (RuntimeException e) {
@@ -399,9 +426,14 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         Connection connection = DriverManager.getConnection(
         		"jdbc:mysql:" + addr + "&autoDeserialize=true");
       
-        Statement statement = connection.createStatement();
-        statement.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName);
-        connection.close();
+        try {
+	        Statement statement = connection.createStatement();
+	        statement.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName);
+	        statement.close();
+        }
+        finally {
+        	connection.close();
+        }
     }
     
     public static void dropDatabase(String addr, String dbName) throws SQLException {
@@ -421,9 +453,14 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         Connection connection = DriverManager.getConnection(
         		"jdbc:mysql:" + addr + "&autoDeserialize=true");
       
-        Statement statement = connection.createStatement();
-        statement.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
-        connection.close();
+        try {
+	        Statement statement = connection.createStatement();
+	        statement.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
+	        statement.close();
+        }
+        finally {
+        	connection.close();
+        }
     }
     
     public String getActualNamePrefix() {
@@ -464,7 +501,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     }
 
     public Iterable<Vertex> getVertices() {
-        return new SqlVertexSequence(this);
+        return SqlVertexSequence.getAllVertices(this);
     }
     
     protected PreparedStatement countVerticesStatement;
@@ -608,7 +645,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     protected PreparedStatement removeEdgePropertyStatement;
     
     public Iterable<Vertex> getShortestPath(final Vertex source, final Vertex target) {
-    	return new SqlVertexSequence(this, ((SqlVertex) source).vid, ((SqlVertex) target).vid);
+    	return SqlVertexSequence.dijkstra(this, ((SqlVertex) source).vid, ((SqlVertex) target).vid);
     }
 
     public void clear() {
@@ -627,6 +664,35 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     }
     
     public void delete() {
+    	
+    	// Commit if necessary
+    	
+    	if (tx.get().booleanValue()) {
+            try {
+            	if (!autoCommit) connection.commit();
+			} catch (SQLException e) {
+				throw new RuntimeException(e);
+			}
+            tx.set(false);
+        }
+    	
+    	// Check other connections
+    	
+    	String addrExt = toString();
+		List<SqlGraph> openConnections = connectionsPerAddr.get(addrExt);
+		if (openConnections.size() > 1) {
+			System.err.println("Warning: SqlGraph.delete() called, but more than one connection is open (might deadlock)");
+			System.err.println("Open connections:");
+			for (SqlGraph g : openConnections) {
+				System.err.println("    " + g.connection);
+				for (int i = 1; i < g.constructorStackTrace.length; i++) {
+					System.err.println("        at " + g.constructorStackTrace[i]);
+				}
+			}
+		}
+		
+		// Delete
+    				
         try {
         	Statement statement = this.connection.createStatement();
         	statement.executeUpdate("DROP PROCEDURE IF EXISTS "+namePrefix+"dijkstra");
@@ -635,12 +701,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         	statement.executeUpdate("drop table "+SqlGraph.this.namePrefix+"edge");
         	statement.executeUpdate("drop table "+SqlGraph.this.namePrefix+"vertex");
     		statement.close();
-    		this.connection.close();
-    		
-    		String addrExt = toString();
-    		initSemaphore.acquire();
-    		numConnectionsPerAddr.put(addrExt, numConnectionsPerAddr.get(addrExt) - 1);
-    		initSemaphore.release();
+    		close();
     	} catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -649,27 +710,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     }
 
     public void shutdown() {
-        if (tx.get().booleanValue()) {
-            try {
-            	if (!autoCommit) connection.commit();
-			} catch (SQLException e) {
-				throw new RuntimeException(e);
-			}
-            tx.set(false);
-        }
-        
-        try {
-    		this.connection.close();
-    		
-    		String addrExt = toString();
-    		initSemaphore.acquire();
-    		numConnectionsPerAddr.put(addrExt, numConnectionsPerAddr.get(addrExt) - 1);
-    		initSemaphore.release();
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }   
+        close();
     }
 
     public String toString() {
@@ -807,5 +848,49 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 	public Iterable<Edge> getEdges(String key, Object value) {
 		// TODO
 		throw new UnsupportedOperationException();
+	}
+	
+	public boolean isClosed() {
+		try {
+			return connection.isClosed();
+		} catch (SQLException e) {
+			return true;
+		}
+	}
+	
+	protected void close() {
+		
+		if (tx.get().booleanValue()) {
+            try {
+            	if (!autoCommit) connection.commit();
+			} catch (SQLException e) {
+				throw new RuntimeException(e);
+			}
+            tx.set(false);
+        }
+        		
+        try {
+        	if (!connection.isClosed()) {
+        		
+	    		this.connection.close();
+	    		
+	    		String addrExt = toString();
+	    		initSemaphore.acquire();
+	    		
+	    		try {
+		    		numConnectionsPerAddr.put(addrExt, numConnectionsPerAddr.get(addrExt) - 1);
+		    		if (!connectionsPerAddr.get(addrExt).remove(this)) {
+		    			throw new IllegalStateException("The current instance of SqlGraph is not in connectionsPerAddr");
+		    		}
+	    		}
+	    		finally {
+	    			initSemaphore.release();
+	    		}
+        	}
+    	} catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
 	}
 }
