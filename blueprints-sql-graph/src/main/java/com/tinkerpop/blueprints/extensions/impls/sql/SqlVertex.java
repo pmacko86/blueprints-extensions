@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;;
@@ -35,7 +36,11 @@ public class SqlVertex extends SqlElement implements Vertex {
 		this.graph = graph;
     }
 
-    protected SqlVertex(final SqlGraph graph, final Object id) throws SQLException {
+    protected SqlVertex(final SqlGraph graph, Object id) throws SQLException {
+    	
+    	if (id instanceof String)
+    		id = Long.valueOf((String) id);
+    	
     	if(!(id instanceof Long))
     		throw new IllegalArgumentException("SqlGraph: " + id + " is not a valid Vertex ID.");
     	
@@ -227,18 +232,30 @@ public class SqlVertex extends SqlElement implements Vertex {
 
 	@Override
 	public Iterable<Edge> getEdges(Direction direction, String... labels) {
+		Iterable<Edge> i;
+		
     	if (labels.length == 0)
-        	return new SqlEdgeSequence(this.graph, this.vid, direction);
+        	i = new SqlEdgeSequence(this.graph, this.vid, direction);
     	else
-    		return new SqlEdgeSequence(this.graph, this.vid, direction, labels);
+    		i = new SqlEdgeSequence(this.graph, this.vid, direction, labels);
+       	
+    	ArrayList<Edge> l = new ArrayList<Edge>();
+    	for (Edge e : i) l.add(e);
+    	return l;
 	}
 
 	@Override
 	public Iterable<Vertex> getVertices(Direction direction, String... labels) {
-    	if (labels.length == 0)
-        	return new SqlVertexSequence(this.graph, this.vid, direction);
+		Iterable<Vertex> i;
+    	
+		if (labels.length == 0)
+    		i = new SqlVertexSequence(this.graph, this.vid, direction);
     	else
-    		return new SqlVertexSequence(this.graph, this.vid, direction, labels);
+    		i = new SqlVertexSequence(this.graph, this.vid, direction, labels);
+    	
+    	ArrayList<Vertex> l = new ArrayList<Vertex>();
+    	for (Vertex v : i) l.add(v);
+    	return l;
 	}
 
 	@Override

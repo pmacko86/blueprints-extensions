@@ -5,8 +5,11 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.extensions.impls.sql.SqlGraph;
 import com.tinkerpop.blueprints.extensions.impls.sql.SqlEdge;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.sql.*;
 
 /**
@@ -20,11 +23,23 @@ public class SqlEdgeSequence implements Iterable<Edge> {
     private Direction direction = null;
     private String[] labels = null;
     private SqlEdgeSequenceIterator iterator = null;
-      
+    
+    private boolean keyValue = false;
+    private String key = null;
+    private Object value = null;
+     
     public SqlEdgeSequence(final SqlGraph graph) {
         this.graph = graph;
     }
     
+    public SqlEdgeSequence(final SqlGraph graph, String key, Object value) {
+    	if (key == null) throw new IllegalArgumentException("key is null");
+    	this.graph = graph;
+    	this.keyValue = true;
+    	this.key = key;
+    	this.value = value;
+    }
+
     public SqlEdgeSequence(final SqlGraph graph, final long vid, final Direction direction) {
     	if (direction == null) throw new IllegalArgumentException("direction is null");
         this.graph = graph;
@@ -42,7 +57,10 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 
     public Iterator<Edge> iterator() {
     	
-    	if (direction == null) {
+    	if (keyValue) {
+    		iterator = new SqlEdgeSequenceIterator(key, value);
+    	}
+    	else if (direction == null) {
     		iterator = new SqlEdgeSequenceIterator();
     	}
     	else if (labels == null) {
@@ -61,13 +79,15 @@ public class SqlEdgeSequence implements Iterable<Edge> {
         private Statement statement = null;
         private ResultSet rs = null;
         private boolean hasNext = false;
+        
+        byte[] filterByte5 = null;
 	    	
 	    public SqlEdgeSequenceIterator() {
 	        try {
 	        	this.statement = graph.connection.createStatement();
-	        	this.statement.setFetchSize(Integer.MIN_VALUE);
+	        	//this.statement.setFetchSize(Integer.MIN_VALUE);
 	        	this.rs = this.statement.executeQuery("select * from "+graph.getActualNamePrefix()+"edge");
-	        	this.hasNext = this.rs.next();
+	        	this.hasNext = nextResult();
 	        } catch (RuntimeException e) {
 	            throw e;
 	        } catch (Exception e) {
@@ -75,6 +95,32 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	        }
 	    }
 	    
+	    public SqlEdgeSequenceIterator(String key, Object value) {
+	    	PreparedStatement statement;
+	    	
+	        try {
+	        	
+	        	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	        	ObjectOutputStream oos = new ObjectOutputStream(baos);
+	        	oos.writeObject(value);
+	        	
+	        	statement = graph.getEdgesByPropertyStatement;
+	        	
+	        	statement.setString(1, key);
+	        	filterByte5 = baos.toByteArray();
+	        	
+	        	this.rs = statement.executeQuery();
+	        	this.hasNext = nextResult();
+	        	
+	        } catch (RuntimeException e) {
+	            throw e;
+	        } catch (Exception e) {
+	            throw new RuntimeException(e.getMessage(), e);
+	        }
+	        
+	        this.statement = null;
+	    }
+
 	    public SqlEdgeSequenceIterator(final long vid, final Direction direction) {
 	    	PreparedStatement statement;
 	    	
@@ -91,7 +137,7 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	        	if (direction == Direction.BOTH) statement.setLong(2, vid);
 	        	
 	        	this.rs = statement.executeQuery();
-	        	this.hasNext = this.rs.next();
+	        	this.hasNext = nextResult();
 	        	
 	        } catch (RuntimeException e) {
 	            throw e;
@@ -134,7 +180,7 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	        	if (direction == Direction.BOTH) statement.setLong(2, vid);
 	        	
 	        	this.rs = statement.executeQuery();
-	        	this.hasNext = this.rs.next();
+	        	this.hasNext = nextResult();
 	        	
 	        } catch (RuntimeException e) {
 	            throw e;
@@ -156,7 +202,7 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	        				this.rs.getLong(2),
 	        				this.rs.getLong(3),
 	        				this.rs.getString(4));
-	        		this.hasNext = this.rs.next();
+	        		this.hasNext = nextResult();
 	        	} else {
 	        		this.rs.close();
 	        		if (this.statement != null) this.statement.close();
@@ -191,6 +237,7 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	        try {
 	        	this.rs.close();
 	        	if (this.statement != null) this.statement.close();
+	        	hasNext = false;
 	        } catch (RuntimeException e) {
 	            throw e;
 	        } catch (Exception e) {
@@ -201,5 +248,25 @@ public class SqlEdgeSequence implements Iterable<Edge> {
 	    public void remove() { 
 	        throw new UnsupportedOperationException(); 
 	    } 
-    }
+	    
+	    protected boolean filterCurrent() throws SQLException {
+	    	
+	    	if (filterByte5 != null) {
+	    		byte[] b = rs.getBytes(5);
+	    		return Arrays.equals(b, filterByte5);
+	    	}
+	    	
+	    	return true;
+	    }
+	    
+	    
+	    protected boolean nextResult() throws SQLException {
+	    	
+	    	while (rs.next()) {
+	    		if (filterCurrent()) return true; 
+	    	}
+	    	
+	    	return false;
+	    }
+   }
 }

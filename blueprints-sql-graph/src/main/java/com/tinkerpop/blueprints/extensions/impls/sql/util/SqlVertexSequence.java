@@ -6,8 +6,11 @@ import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.impls.sql.SqlGraph;
 import com.tinkerpop.blueprints.extensions.impls.sql.SqlVertex;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.sql.*;
 
 
@@ -27,11 +30,23 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
     private long source = -1;
     private long target = -1;
     
+    private boolean keyValue = false;
+    private String key = null;
+    private Object value = null;
+    
     private AbstractSqlVertexSequenceIterator iterator = null;
     
     
     protected SqlVertexSequence(final SqlGraph graph) {
     	this.graph = graph;
+    }
+    
+    public SqlVertexSequence(final SqlGraph graph, String key, Object value) {
+    	if (key == null) throw new IllegalArgumentException("key is null");
+    	this.graph = graph;
+    	this.keyValue = true;
+    	this.key = key;
+    	this.value = value;
     }
     
     public SqlVertexSequence(final SqlGraph graph, long vid, Direction direction) {
@@ -68,6 +83,9 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
     	if (dijkstra) {
     		iterator = new DijkstraIterator(source, target);
     	}
+    	if (keyValue) {
+    		iterator = new SqlVertexSequenceIterator(key, value);
+    	}
     	else if (direction == null) {
     		iterator = new SqlVertexSequenceIterator();
     	}
@@ -87,7 +105,7 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	}
     
     
-    class AbstractSqlVertexSequenceIterator implements Iterator<Vertex> {
+    abstract class AbstractSqlVertexSequenceIterator implements Iterator<Vertex> {
     	
         protected Statement statement = null;
         protected ResultSet rs = null;
@@ -104,7 +122,7 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        try {
 	        	if (this.hasNext) {
 	        		result = new SqlVertex(graph, this.rs.getLong(1));
-	        		this.hasNext = this.rs.next();
+	        		this.hasNext = nextResult();
 	        	} else {
 	        		this.rs.close();
 	        		if (this.statement != null) this.statement.close();
@@ -152,11 +170,24 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	
 	    public void remove() { 
 	        throw new UnsupportedOperationException(); 
-	    } 
+	    }
+	    
+	    protected abstract boolean filterCurrent() throws SQLException;
+	    
+	    protected boolean nextResult() throws SQLException {
+	    	
+	    	while (rs.next()) {
+	    		if (filterCurrent()) return true; 
+	    	}
+	    	
+	    	return false;
+	    }
     }
 
     
     class SqlVertexSequenceIterator extends AbstractSqlVertexSequenceIterator {
+    	
+    	byte[] filterByte2 = null;
 	
         public SqlVertexSequenceIterator() {
 	    	
@@ -164,12 +195,38 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        	statement = graph.connection.createStatement();
 	        	//s.statement.setFetchSize(Integer.MIN_VALUE);
 	        	rs = statement.executeQuery("select * from "+graph.getActualNamePrefix()+"vertex");
-	        	hasNext = rs.next();
+	        	hasNext = nextResult();
 	        } catch (RuntimeException e) {
 	            throw e;
 	        } catch (Exception e) {
 	            throw new RuntimeException(e.getMessage(), e);
 	        }
+	    }
+	    
+	    public SqlVertexSequenceIterator(String key, Object value) {
+	    	PreparedStatement statement;
+	    	
+	        try {
+	        	
+	        	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	        	ObjectOutputStream oos = new ObjectOutputStream(baos);
+	        	oos.writeObject(value);
+	        	
+	        	statement = graph.getVerticesByPropertyStatement;
+	        	
+	        	statement.setString(1, key);
+	        	filterByte2 = baos.toByteArray();
+	        	
+	        	this.rs = statement.executeQuery();
+	        	this.hasNext = nextResult();
+	        	
+	        } catch (RuntimeException e) {
+	            throw e;
+	        } catch (Exception e) {
+	            throw new RuntimeException(e.getMessage(), e);
+	        }
+	        
+	        this.statement = null;
 	    }
 	    
 	    public SqlVertexSequenceIterator(long vid, Direction direction) {
@@ -188,7 +245,7 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        	if (direction == Direction.BOTH) statement.setLong(2, vid);
 	        	
 	        	this.rs = statement.executeQuery();
-	        	this.hasNext = this.rs.next();
+	        	this.hasNext = nextResult();
 	        	
 	        } catch (RuntimeException e) {
 	            throw e;
@@ -232,7 +289,7 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        	if (direction == Direction.BOTH) statement.setLong(2, vid);
 	        	
 	        	this.rs = statement.executeQuery();
-	        	this.hasNext = this.rs.next();
+	        	this.hasNext = nextResult();
 	        	
 	        } catch (RuntimeException e) {
 	            throw e;
@@ -241,6 +298,16 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        }
 	        
 	        this.statement = statement;
+	    }
+	    
+	    protected boolean filterCurrent() throws SQLException {
+	    	
+	    	if (filterByte2 != null) {
+	    		byte[] b = rs.getBytes(2);
+	    		return Arrays.equals(b, filterByte2);
+	    	}
+	    	
+	    	return true;
 	    }
     }
 	    
@@ -257,7 +324,7 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	    		statement.setLong(1, source);
 	    		statement.setLong(2, target);
 	    		rs = statement.executeQuery();
-	    		hasNext = rs.next();
+	    		hasNext = nextResult();
 	    	} catch (RuntimeException e) {
 	            throw e;
 	        } catch (Exception e) {
@@ -265,6 +332,10 @@ public class SqlVertexSequence implements CloseableIterable<Vertex> {
 	        }
 	    	
 	    	this.statement = statement;
+	    }
+	    
+	    protected boolean filterCurrent() throws SQLException {
+	    	return true;
 	    }
     }
 }

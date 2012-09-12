@@ -77,16 +77,16 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     	
     	// TODO We need to revisit these
 
-        FEATURES.supportsSerializableObjectProperty = false;
+        FEATURES.supportsSerializableObjectProperty = true;
         FEATURES.supportsBooleanProperty = true;
         FEATURES.supportsDoubleProperty = true;
         FEATURES.supportsFloatProperty = true;
         FEATURES.supportsIntegerProperty = true;
-        FEATURES.supportsPrimitiveArrayProperty = false;
-        FEATURES.supportsUniformListProperty = false;
-        FEATURES.supportsMixedListProperty = false;
+        FEATURES.supportsPrimitiveArrayProperty = true;
+        FEATURES.supportsUniformListProperty = true;
+        FEATURES.supportsMixedListProperty = true;
         FEATURES.supportsLongProperty = true;
-        FEATURES.supportsMapProperty = false;
+        FEATURES.supportsMapProperty = true;
         FEATURES.supportsStringProperty = true;
 
         FEATURES.supportsDuplicateEdges = true;
@@ -329,6 +329,8 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 								"replace into "+SqlGraph.this.namePrefix+"vertexproperty values(?,?,?)");
         	removeVertexPropertyStatement = connection.prepareStatement(
 								"delete from "+SqlGraph.this.namePrefix+"vertexproperty where vid=? and pkey=?");
+        	getVerticesByPropertyStatement = connection.prepareStatement(
+								"select vid, value from "+SqlGraph.this.namePrefix+"vertexproperty where pkey=?");
         	
         	
         	// Vertex in/out edges:
@@ -385,6 +387,10 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 								"replace into "+SqlGraph.this.namePrefix+"edgeproperty values(?,?,?)");
         	removeEdgePropertyStatement = connection.prepareStatement(
 								"delete from "+SqlGraph.this.namePrefix+"edgeproperty where eid=? and pkey=?");
+        	getEdgesByPropertyStatement = connection.prepareStatement(
+								"select e.eid, outid, inid, label, value "+
+								  "from "+SqlGraph.this.namePrefix+"edgeproperty as p, "+SqlGraph.this.namePrefix+"edge as e "+
+								 "where pkey=? and e.eid=p.eid");
         			
         	
         	// Disable auto-commit.
@@ -837,17 +843,18 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 	public Features getFeatures() {
 		return FEATURES;
 	}
+	
+	public PreparedStatement getVerticesByPropertyStatement;
+	public PreparedStatement getEdgesByPropertyStatement;
 
 	@Override
 	public Iterable<Vertex> getVertices(String key, Object value) {
-		// TODO
-		throw new UnsupportedOperationException();
+		return new SqlVertexSequence(this, key, value);
 	}
 
 	@Override
 	public Iterable<Edge> getEdges(String key, Object value) {
-		// TODO
-		throw new UnsupportedOperationException();
+		return new SqlEdgeSequence(this, key, value);
 	}
 	
 	public boolean isClosed() {

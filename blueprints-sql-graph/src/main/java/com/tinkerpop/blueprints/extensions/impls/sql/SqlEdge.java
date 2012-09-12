@@ -53,7 +53,11 @@ public class SqlEdge extends SqlElement implements Edge {
 		this.label = label;
     }
 
-    protected SqlEdge(final SqlGraph graph, final Object id) throws SQLException {
+    protected SqlEdge(final SqlGraph graph, Object id) throws SQLException {
+    	
+    	if (id instanceof String)
+    		id = Long.valueOf((String) id);
+    	
     	if(!(id instanceof Long))
     		throw new IllegalArgumentException("SqlGraph: " + id + " is not a valid Edge ID.");
     	
