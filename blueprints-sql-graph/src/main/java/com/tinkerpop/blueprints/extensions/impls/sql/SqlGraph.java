@@ -4,6 +4,7 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Features;
 import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.extensions.AutoTransactionalGraph;
 import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.impls.sql.util.*;
@@ -23,7 +24,7 @@ import java.util.regex.Pattern;
  * @author Peter Macko (http://www.eecs.harvard.edu/~pmacko)
  */
 @SuppressWarnings("deprecation")
-public class SqlGraph implements TransactionalGraph, BulkloadableGraph, BenchmarkableGraph {
+public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, BenchmarkableGraph {
 	
 	// Note: This code is not thread-safe, but there is no need to make it as such, since
 	// MySQL performs much better if it is used from two connections from two threads, rather
@@ -59,6 +60,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     };
     
 	private boolean bulkLoadMode = false;
+	private boolean autoTransactionControl = false;
 	
 	public PreparedStatement getOutEdgesStatement;
 	public PreparedStatement getInEdgesStatement;
@@ -729,6 +731,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     /* TRANSACTIONAL GRAPH INTERFACE */
 
     protected void autoStartTransaction() {
+    	if (!autoTransactionControl) return;
         if (this.txBuffer.get() > 0) {
             if (!tx.get().booleanValue()) {
                 tx.set(true);
@@ -737,11 +740,15 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         }
     }
 
+    @Override
     public void stopTransaction(final Conclusion conclusion) {
-        if (!tx.get().booleanValue()) {
-            txCounter.set(0);
-            return;
-        }
+        
+    	if (autoTransactionControl) {
+    		if (!tx.get().booleanValue()) {
+	            txCounter.set(0);
+	            return;
+	        }
+    	}
 
         try {
             if (conclusion == Conclusion.SUCCESS)
@@ -757,6 +764,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
     }
 
     protected void autoStopTransaction(final Conclusion conclusion) {
+    	if (!autoTransactionControl) return;
         if (this.txBuffer.get() > 0) {
             txCounter.set(txCounter.get() + 1);
             if (conclusion == Conclusion.FAILURE) {
@@ -867,7 +875,7 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
 	
 	protected void close() {
 		
-		if (tx.get().booleanValue()) {
+		if (tx.get().booleanValue() || !autoTransactionControl) {
             try {
             	if (!autoCommit) connection.commit();
 			} catch (SQLException e) {
@@ -899,5 +907,15 @@ public class SqlGraph implements TransactionalGraph, BulkloadableGraph, Benchmar
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+	}
+
+	@Override
+	public void setAutoTransactionControl(boolean enable) {
+		
+		if (autoTransactionControl == enable) return;
+		
+		if (autoTransactionControl) autoStopTransaction(Conclusion.SUCCESS);		
+		autoTransactionControl = enable;		
+		if (autoTransactionControl) autoStartTransaction();
 	}
 }

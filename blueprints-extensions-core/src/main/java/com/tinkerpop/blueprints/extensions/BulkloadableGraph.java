@@ -18,13 +18,4 @@ public interface BulkloadableGraph extends Graph {
 	 * Stop bulk load mode
 	 */
 	public void stopBulkLoad();
-
-	
-	// XXX ???
-	
-	public int getCurrentBufferSize();
-
-	public int getMaxBufferSize();
-
-	public void setMaxBufferSize(int size);
 }
