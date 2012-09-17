@@ -215,7 +215,7 @@ public class SqlVertex extends SqlElement implements Vertex {
             return true;
         if (obj == null)
             return false;
-        if (getClass() != obj.getClass())
+        if (!(obj instanceof SqlVertex))
             return false;
 
         final SqlVertex other = (SqlVertex) obj;
@@ -223,7 +223,8 @@ public class SqlVertex extends SqlElement implements Vertex {
     }
 
     public int hashCode() {
-        return (new Long(this.vid)).hashCode();
+    	// Same as: (new Long(this.vid)).hashCode()
+        return (int)((this.vid >>> 32) ^ this.vid);
     }
     
     public String toString() {

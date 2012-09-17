@@ -353,8 +353,8 @@ public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, Benc
         	getInVerticesStatement = connection.prepareStatement(
 								"select outid, eid from "+SqlGraph.this.namePrefix+"edge where inid=?");
         	getBothVerticesStatement = connection.prepareStatement(
-								"(select outid as id, eid from "+SqlGraph.this.namePrefix+"edge where outid=?) union all " +
-								"(select inid  as id, eid from "+SqlGraph.this.namePrefix+"edge where inid=?)");
+								"(select  inid as id, eid from "+SqlGraph.this.namePrefix+"edge where outid=?) union all " +
+								"(select outid as id, eid from "+SqlGraph.this.namePrefix+"edge where inid=?)");
        	
         	
         	// Edges:
