@@ -76,8 +76,6 @@ public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, Benc
     private static final Features FEATURES = new Features();
 
     static {
-    	
-    	// TODO We need to revisit these
 
         FEATURES.supportsSerializableObjectProperty = true;
         FEATURES.supportsBooleanProperty = true;
