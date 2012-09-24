@@ -43,15 +43,15 @@ public class BdbEdge extends BdbElement implements Edge {
     {
     	DatabaseEntry data = graph.data;
 
-    	this.out = RecordNumberBinding.entryToRecordNumber(outVertex.id);
-    	this.in = RecordNumberBinding.entryToRecordNumber(inVertex.id);
+    	this.out = RecordNumberBinding.entryToRecordNumber(outVertex.dataId);
+    	this.in = RecordNumberBinding.entryToRecordNumber(inVertex.dataId);
 
     	if (!graph.bulkLoadMode) {
 	    	// First, verify in and out vertex existence.
 	    	OperationStatus status;
-	    	status = graph.vertexDb.exists(null, outVertex.id);
+	    	status = graph.vertexDb.exists(null, outVertex.dataId);
 	    	if (status == OperationStatus.SUCCESS)
-	    		status = graph.vertexDb.exists(null, inVertex.id);
+	    		status = graph.vertexDb.exists(null, inVertex.dataId);
 	        
 	        if (status != OperationStatus.SUCCESS)
 	        	throw new RuntimeException("BdbEdge: Vertex " + this.out + " or " + this.in + " does not exist.");
@@ -64,10 +64,10 @@ public class BdbEdge extends BdbElement implements Edge {
         BdbEdgeData edata = new BdbEdgeData(label, this.in);
         edgeDataBinding.objectToEntry(edata, data);
         
-    	if (graph.outDb.putNoDupData(null, outVertex.id, data) == OperationStatus.SUCCESS) {
+    	if (graph.outDb.putNoDupData(null, outVertex.dataId, data) == OperationStatus.SUCCESS) {
     		edata.id = this.out;
     		edgeDataBinding.objectToEntry(edata, data);
-    		graph.inDb.putNoDupData(null, inVertex.id, data);
+    		graph.inDb.putNoDupData(null, inVertex.dataId, data);
     		//XXX dmargo: This needs to be a transaction to be safe.
     	}
         
@@ -430,15 +430,17 @@ public class BdbEdge extends BdbElement implements Edge {
             return true;
         if (obj == null)
             return false;
-        if (getClass() != obj.getClass())
+        if (!(obj instanceof BdbEdge))
             return false;
 
         final BdbEdge other = (BdbEdge) obj;
         return (this.out == other.out && this.in == other.in && this.label.equals(other.label));
     }
 
-    public int hashCode() {    	
-    	return (new Long(out)).hashCode() ^ label.hashCode() ^ (new Long(in)).hashCode();
+    public int hashCode() {
+    	int h_out = (int)((this.out >>> 32) ^ this.out);
+    	int h_in  = (int)((this.in  >>> 32) ^ this.in );
+    	return h_out ^ label.hashCode() ^ (~h_in);
     }
     
     public String toString() {

@@ -30,14 +30,18 @@ import java.util.Set;
 public class BdbVertex extends BdbElement implements Vertex {
 		
     private BdbGraph graph;
-    protected DatabaseEntry id = new DatabaseEntry();
+    protected DatabaseEntry dataId;
+    protected long id;
 
     protected BdbVertex(final BdbGraph graph) throws DatabaseException{
     	DatabaseEntry data = graph.data;
 		data.setSize(0);
-		if (graph.vertexDb.append(null, this.id, data) != OperationStatus.SUCCESS)
+		this.dataId = new DatabaseEntry();
+		
+		if (graph.vertexDb.append(null, this.dataId, data) != OperationStatus.SUCCESS)
 			throw new RuntimeException("BdbVertex: Failed to create vertex ID.");
 			
+		this.id = RecordNumberBinding.entryToRecordNumber(dataId);
 		this.graph = graph;
     }
 
@@ -49,21 +53,26 @@ public class BdbVertex extends BdbElement implements Vertex {
     	if(!(id instanceof Long))
     		throw new IllegalArgumentException("BdbVertex: " + id + " is not a valid vertex ID.");
     	
-    	RecordNumberBinding.recordNumberToEntry((Long) id, this.id);
-		if (graph.vertexDb.exists(null, this.id) != OperationStatus.SUCCESS)
+    	this.dataId = new DatabaseEntry();
+    	RecordNumberBinding.recordNumberToEntry((Long) id, this.dataId);
+		if (graph.vertexDb.exists(null, this.dataId) != OperationStatus.SUCCESS)
 			throw new RuntimeException("BdbVertex: Vertex " + id + " does not exist.");
 
+		this.id = ((Long) id).longValue();
         this.graph = graph;
     }
 
     public BdbVertex(final BdbGraph graph, final long id) {
-    	RecordNumberBinding.recordNumberToEntry(id, this.id);
+    	this.dataId = new DatabaseEntry();
+    	RecordNumberBinding.recordNumberToEntry(id, this.dataId);
+    	this.id = id;
         this.graph = graph;
     }
 
-    public BdbVertex(final BdbGraph graph, final DatabaseEntry id) {
+    public BdbVertex(final BdbGraph graph, final DatabaseEntry dataId) {
     	this.graph = graph;
-    	this.id.setData(id.getData().clone());
+    	this.id = RecordNumberBinding.entryToRecordNumber(dataId);
+    	this.dataId = new DatabaseEntry(dataId.getData().clone());
     }  
     
     public static BdbVertex getRandomVertex(final BdbGraph graph) throws DatabaseException {
@@ -97,15 +106,15 @@ public class BdbVertex extends BdbElement implements Vertex {
         	((BdbEdge) e).remove();
 
     	// Remove properties and vertex record.
-    	this.graph.vertexPropertyDb.delete(null, this.id);
-    	this.graph.vertexDb.delete(null, this.id);
+    	this.graph.vertexPropertyDb.delete(null, this.dataId);
+    	this.graph.vertexDb.delete(null, this.dataId);
 
-        this.id = null;
+        this.dataId = null;
         this.graph = null;
     }
     
     public Object getId() {
-    	return id != null ? RecordNumberBinding.entryToRecordNumber(this.id) : null;
+    	return dataId != null ? id : null;
     }
 
     public Object getProperty(final String pkey) {
@@ -118,7 +127,7 @@ public class BdbVertex extends BdbElement implements Vertex {
         try {
         	cursor = this.graph.vertexPropertyDb.openCursor(null,  null);
         	
-        	status = cursor.getSearchBothRange(this.id, data, null);
+        	status = cursor.getSearchBothRange(this.dataId, data, null);
         	if (status == OperationStatus.SUCCESS) {
         		
         		key.setPartial(0, 0, true);
@@ -151,7 +160,7 @@ public class BdbVertex extends BdbElement implements Vertex {
 		try {
 			cursor = this.graph.vertexPropertyDb.openCursor(null, null);
 			
-			status = cursor.getSearchKey(this.id, data, null);
+			status = cursor.getSearchKey(this.dataId, data, null);
 			key.setPartial(0, 0, true);
 			while (status == OperationStatus.SUCCESS) {
 				
@@ -188,7 +197,7 @@ public class BdbVertex extends BdbElement implements Vertex {
         	cursor = this.graph.vertexPropertyDb.openCursor(null,  null);
         	
         	// If pkey exists, delete it.
-        	status = cursor.getSearchBothRange(this.id, data, null);
+        	status = cursor.getSearchBothRange(this.dataId, data, null);
         	if (status == OperationStatus.SUCCESS) {
         		
         		key.setPartial(0, 0, true);
@@ -208,7 +217,7 @@ public class BdbVertex extends BdbElement implements Vertex {
         	pdata.pkey = pkey;
         	pdata.value = value;
         	BdbElement.propertyDataBinding.objectToEntry(pdata, data);
-        	status = cursor.put(this.id, data);
+        	status = cursor.put(this.dataId, data);
         	
         	cursor.close();
         	
@@ -239,7 +248,7 @@ public class BdbVertex extends BdbElement implements Vertex {
         	cursor = this.graph.vertexPropertyDb.openCursor(null,  null);
         	
         	// If pkey exists, delete it.
-        	if (cursor.getSearchBothRange(this.id, data, null) == OperationStatus.SUCCESS) {
+        	if (cursor.getSearchBothRange(this.dataId, data, null) == OperationStatus.SUCCESS) {
         		
         		key.setPartial(0, 0, false);
         		status = cursor.getCurrent(new DatabaseEntry(), data, null);
@@ -271,15 +280,15 @@ public class BdbVertex extends BdbElement implements Vertex {
             return true;
         if (obj == null)
             return false;
-        if (getClass() != obj.getClass())
+        if (!(obj instanceof BdbVertex))
             return false;
 
         final BdbVertex other = (BdbVertex) obj;
-        return this.id.equals(other.id);
+        return this.id == other.id;
     }
 
     public int hashCode() {
-        return this.id.hashCode();
+    	return (int)((this.id >>> 32) ^ this.id);
     }
     
     public String toString() {
@@ -292,11 +301,11 @@ public class BdbVertex extends BdbElement implements Vertex {
     		switch (direction) {
     		case OUT :
     		case IN  :
-        		return new BdbEdgeVertexSequence(this.graph, this.id, direction);
+        		return new BdbEdgeVertexSequence(this.graph, this.dataId, direction);
     		case BOTH:
     			ArrayList<Iterable<Edge>> a = new ArrayList<Iterable<Edge>>();
-    			a.add(new BdbEdgeVertexSequence(this.graph, this.id, Direction.OUT));
-    			a.add(new BdbEdgeVertexSequence(this.graph, this.id, Direction.IN ));
+    			a.add(new BdbEdgeVertexSequence(this.graph, this.dataId, Direction.OUT));
+    			a.add(new BdbEdgeVertexSequence(this.graph, this.dataId, Direction.IN ));
     			return new MultiIterable<Edge>(a);
     		default  :
     			throw new IllegalArgumentException("Invalid direction");
@@ -306,11 +315,11 @@ public class BdbVertex extends BdbElement implements Vertex {
     		switch (direction) {
     		case OUT :
     		case IN  :
-        		return new BdbEdgeVertexLabelSequence(this.graph, this.id, direction, labels);
+        		return new BdbEdgeVertexLabelSequence(this.graph, this.dataId, direction, labels);
     		case BOTH:
     			ArrayList<Iterable<Edge>> a = new ArrayList<Iterable<Edge>>();
-    			a.add(new BdbEdgeVertexLabelSequence(this.graph, this.id, Direction.OUT, labels));
-    			a.add(new BdbEdgeVertexLabelSequence(this.graph, this.id, Direction.IN , labels));
+    			a.add(new BdbEdgeVertexLabelSequence(this.graph, this.dataId, Direction.OUT, labels));
+    			a.add(new BdbEdgeVertexLabelSequence(this.graph, this.dataId, Direction.IN , labels));
     			return new MultiIterable<Edge>(a);
     		default  :
     			throw new IllegalArgumentException("Invalid direction");
@@ -324,11 +333,11 @@ public class BdbVertex extends BdbElement implements Vertex {
     		switch (direction) {
     		case OUT :
     		case IN  :
-        		return new BdbVertexVertexSequence(this.graph, this.id, direction);
+        		return new BdbVertexVertexSequence(this.graph, this.dataId, direction);
     		case BOTH:
     			ArrayList<Iterable<Vertex>> a = new ArrayList<Iterable<Vertex>>();
-    			a.add(new BdbVertexVertexSequence(this.graph, this.id, Direction.OUT));
-    			a.add(new BdbVertexVertexSequence(this.graph, this.id, Direction.IN ));
+    			a.add(new BdbVertexVertexSequence(this.graph, this.dataId, Direction.OUT));
+    			a.add(new BdbVertexVertexSequence(this.graph, this.dataId, Direction.IN ));
     			return new MultiIterable<Vertex>(a);
     		default  :
     			throw new IllegalArgumentException("Invalid direction");
@@ -338,11 +347,11 @@ public class BdbVertex extends BdbElement implements Vertex {
     		switch (direction) {
     		case OUT :
     		case IN  :
-        		return new BdbVertexVertexLabelSequence(this.graph, this.id, direction, labels);
+        		return new BdbVertexVertexLabelSequence(this.graph, this.dataId, direction, labels);
     		case BOTH:
     			ArrayList<Iterable<Vertex>> a = new ArrayList<Iterable<Vertex>>();
-    			a.add(new BdbVertexVertexLabelSequence(this.graph, this.id, Direction.OUT, labels));
-    			a.add(new BdbVertexVertexLabelSequence(this.graph, this.id, Direction.IN , labels));
+    			a.add(new BdbVertexVertexLabelSequence(this.graph, this.dataId, Direction.OUT, labels));
+    			a.add(new BdbVertexVertexLabelSequence(this.graph, this.dataId, Direction.IN , labels));
     			return new MultiIterable<Vertex>(a);
     		default  :
     			throw new IllegalArgumentException("Invalid direction");
