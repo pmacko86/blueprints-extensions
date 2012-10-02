@@ -1,10 +1,13 @@
 package com.tinkerpop.blueprints.extensions.graphml;
 
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
+import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLTokens;
 import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
 import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Features;
 import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
 
 import javax.xml.stream.XMLInputFactory;
@@ -171,7 +174,14 @@ public class FastGraphMLReader {
 
     	try {
     		
-    		final BatchGraph<?> graph = BatchGraph.wrap(inputGraph, bufferSize);
+    		final Graph graph = inputGraph instanceof TransactionalGraph
+    				? BatchGraph.wrap(inputGraph, bufferSize)
+    				: inputGraph;
+       		
+    		final Features features = graph.getFeatures();
+    		
+    		boolean supplyPropertiesAsVertexIds = inputGraph instanceof Neo4jBatchGraph;
+    		boolean supplyVertexIds = !features.ignoresSuppliedIds && !supplyPropertiesAsVertexIds;  
     		
     		XMLStreamReader reader = inputFactory.createXMLStreamReader(graphMLInputStream);
 
@@ -292,16 +302,19 @@ public class FastGraphMLReader {
     					Vertex currentVertex = vertexMap.get(vertexId);
 
     					if (currentVertex != null) {
-    						// Duplicate vertices with same ID?
-    								// TODO Alex: Shouldn't this throw an Exception?
+    						throw new RuntimeException("Duplicate vertex with the same ID: " + vertexId);
     					}
     					else {
-    						currentVertex = graph.addVertex(vertexId);
+    						Object a = supplyVertexIds ? vertexId : null;
+    						if (supplyPropertiesAsVertexIds) a = vertexProps;
+    						currentVertex = graph.addVertex(a);
     						vertexMap.put(vertexId, currentVertex);
     					}
 
-    					for (Entry<String, Object> prop : vertexProps.entrySet()) {
-    						currentVertex.setProperty(prop.getKey(), prop.getValue());
+    					if (!supplyPropertiesAsVertexIds) {
+	    					for (Entry<String, Object> prop : vertexProps.entrySet()) {
+	    						currentVertex.setProperty(prop.getKey(), prop.getValue());
+	    					}
     					}
 
     					vertexId = null;

@@ -73,8 +73,8 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
         FEATURES.isPersistent = true;
         FEATURES.isWrapper = false;
         FEATURES.isRDFModel = false;
-        FEATURES.supportsVertexIteration = false;	//TODO
-        FEATURES.supportsEdgeIteration = false;		//TODO
+        FEATURES.supportsVertexIteration = false;	//TODO Add vertex iteration
+        FEATURES.supportsEdgeIteration = false;		//TODO Add edge iteration
         FEATURES.supportsVertexIndex = true;
         FEATURES.supportsEdgeIndex = true;
         FEATURES.ignoresSuppliedIds = true;

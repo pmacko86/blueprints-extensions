@@ -122,7 +122,7 @@ public class SqlGraphTest extends GraphTest {
 
 	@Override
 	public Graph generateGraph() {
-		// TODO Is this okay?
+		// Blueprints 1.1.0 --> Blueprints 2.1.0 migration hack
 		return getGraphInstance();
 	}
 }
