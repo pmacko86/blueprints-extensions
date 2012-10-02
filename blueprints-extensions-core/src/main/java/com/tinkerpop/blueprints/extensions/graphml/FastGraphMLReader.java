@@ -306,9 +306,14 @@ public class FastGraphMLReader {
     					}
     					else {
     						Object a = supplyVertexIds ? vertexId : null;
-    						if (supplyPropertiesAsVertexIds) a = vertexProps;
+    						Object _id = null;
+    						if (supplyPropertiesAsVertexIds) {
+    							_id = vertexProps.remove("_id");
+    							a = vertexProps;
+    						}
     						currentVertex = graph.addVertex(a);
     						vertexMap.put(vertexId, currentVertex);
+    						if (_id != null) currentVertex.setProperty("_id", _id);
     					}
 
     					if (!supplyPropertiesAsVertexIds) {
