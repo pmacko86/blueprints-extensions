@@ -1,6 +1,7 @@
-package com.tinkerpop.blueprints.extensions.graphml;
+package com.tinkerpop.blueprints.extensions.io.graphml;
 
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
+import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLTokens;
 import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
@@ -35,7 +36,7 @@ public class FastGraphMLReader {
     private String vertexIdKey = null;
     private String edgeIdKey = null;
     private String edgeLabelKey = null;
-    private FastGraphMLReaderProgressListener progressListener = null;
+    private GraphProgressListener progressListener = null;
 	private boolean ingestAsUndirected = false;
 
     /**
@@ -69,7 +70,7 @@ public class FastGraphMLReader {
     /**
      * @param progressListener the progress listener.
      */
-    public void setProgressListener(FastGraphMLReaderProgressListener progressListener) {
+    public void setProgressListener(GraphProgressListener progressListener) {
         this.progressListener = progressListener;
     }
 
@@ -127,7 +128,7 @@ public class FastGraphMLReader {
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
     public static void inputGraph(final Graph graph, final InputStream graphMLInputStream,
-    		FastGraphMLReaderProgressListener progressListener) throws IOException {
+    		GraphProgressListener progressListener) throws IOException {
         inputGraph(graph, graphMLInputStream, 1000, null, null, null, progressListener, false);
     }
 
@@ -163,7 +164,7 @@ public class FastGraphMLReader {
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
     public static void inputGraph(final Graph inputGraph, final InputStream graphMLInputStream, int bufferSize,
-    		String vertexIdKey, String edgeIdKey, String edgeLabelKey, FastGraphMLReaderProgressListener progressListener,
+    		String vertexIdKey, String edgeIdKey, String edgeLabelKey, GraphProgressListener progressListener,
     		boolean ingestAsUndirected) throws IOException {
 
     	XMLInputFactory inputFactory = XMLInputFactory.newInstance();
@@ -329,7 +330,7 @@ public class FastGraphMLReader {
     					numVertices++;
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(numVertices, numEdges);
+    							progressListener.graphProgress(numVertices, numEdges);
     						}
     					}
 
@@ -376,7 +377,7 @@ public class FastGraphMLReader {
 
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(numVertices, numEdges);
+    							progressListener.graphProgress(numVertices, numEdges);
     						}
     					}
     				}
@@ -386,7 +387,7 @@ public class FastGraphMLReader {
     		reader.close();
 
     		if (progressListener != null) {
-    			progressListener.inputGraphProgress(numVertices, numEdges);
+    			progressListener.graphProgress(numVertices, numEdges);
     		}
     	} catch (XMLStreamException xse) {
     		throw new IOException(xse);

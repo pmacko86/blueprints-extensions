@@ -1,4 +1,4 @@
-package com.tinkerpop.blueprints.extensions.fgf.tools;
+package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,12 +10,12 @@ import java.util.Map.Entry;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-import com.tinkerpop.blueprints.extensions.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.fgf.FGFReaderHandler;
-import com.tinkerpop.blueprints.extensions.fgf.FGFWriter;
-import com.tinkerpop.blueprints.extensions.fgf.GraphML2FGF;
-import com.tinkerpop.blueprints.extensions.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.graphml.FastGraphMLReaderProgressListener;
+import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.GraphML2FGF;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
 
 
 /**
@@ -398,7 +398,7 @@ public class FGFTool {
     /**
      * Progress listener for the command-line tool
      */
-    static class GraphReaderProgressListener implements FastGraphMLReaderProgressListener {
+    static class GraphReaderProgressListener implements GraphProgressListener {
     	
     	private static final String BACKSPACES = "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
     	
@@ -414,7 +414,7 @@ public class FGFTool {
     	 * @param edges the number of edges
     	 */
     	@Override
-    	public void inputGraphProgress(int vertices, int edges) {
+    	public void graphProgress(int vertices, int edges) {
     		
     		long t = System.currentTimeMillis();
     		long dt = t - lastProgressTime;

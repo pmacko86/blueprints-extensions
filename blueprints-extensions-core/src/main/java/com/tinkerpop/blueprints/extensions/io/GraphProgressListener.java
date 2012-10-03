@@ -1,12 +1,12 @@
-package com.tinkerpop.blueprints.extensions.graphml;
+package com.tinkerpop.blueprints.extensions.io;
 
 
 /**
- * The progress listener for the GraphML loader
+ * The progress listener for a graph reader or writer, or for a streaming graph algorithm
  * 
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public interface FastGraphMLReaderProgressListener {
+public interface GraphProgressListener {
 
 	
 	/**
@@ -15,5 +15,5 @@ public interface FastGraphMLReaderProgressListener {
 	 * @param vertices the number of vertices loaded so far
 	 * @param edges the number of edges
 	 */
-	public void inputGraphProgress(int vertices, int edges);
+	public void graphProgress(int vertices, int edges);
 }

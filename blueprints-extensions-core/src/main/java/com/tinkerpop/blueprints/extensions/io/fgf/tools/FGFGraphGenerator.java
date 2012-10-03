@@ -1,4 +1,4 @@
-package com.tinkerpop.blueprints.extensions.fgf.tools;
+package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,8 +8,8 @@ import java.util.Random;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-import com.tinkerpop.blueprints.extensions.fgf.FGFWriter;
-import com.tinkerpop.blueprints.extensions.fgf.tools.FGFTool.GraphReaderProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.tools.FGFTool.GraphReaderProgressListener;
 
 
 /**
@@ -164,7 +164,7 @@ public class FGFGraphGenerator {
 			long _i = out.writeVertex("", null);
 			assert i == _i;
 			
-			if (verbose && i % 100000 == 0) l.inputGraphProgress((int) i, (int) 0);
+			if (verbose && i % 100000 == 0) l.graphProgress((int) i, (int) 0);
 		}
 		
 		for (long i = 0; i < heads.length; i++) {
@@ -174,10 +174,10 @@ public class FGFGraphGenerator {
 			
 			out.writeEdge(heads[(int) i], tails[(int) i], type, null);
 			
-			if (verbose && i % 100000 == 0) l.inputGraphProgress((int) vertices, (int) i);
+			if (verbose && i % 100000 == 0) l.graphProgress((int) vertices, (int) i);
 		}
 		
-		if (verbose) l.inputGraphProgress((int) vertices, (int) heads.length);
+		if (verbose) l.graphProgress((int) vertices, (int) heads.length);
 		if (verbose) System.err.println();
 		
 		if (verbose) System.err.print("Finalizing: ");
@@ -264,7 +264,7 @@ public class FGFGraphGenerator {
     			edge_i++;
     		}
     		
-			if (verbose && (i == 1 || i % 100000 == 0)) l.inputGraphProgress((int) vertices, (int) i);
+			if (verbose && (i == 1 || i % 100000 == 0)) l.graphProgress((int) vertices, (int) i);
     	}
     	
     	
@@ -272,7 +272,7 @@ public class FGFGraphGenerator {
     	
     	assert edge_i == heads.length && edge_i == tails.length;
 		
-		if (verbose) l.inputGraphProgress((int) vertices, (int) heads.length);
+		if (verbose) l.graphProgress((int) vertices, (int) heads.length);
 		if (verbose) System.err.println();
     }
 }

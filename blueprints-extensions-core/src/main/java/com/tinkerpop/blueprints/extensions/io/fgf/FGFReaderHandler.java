@@ -1,4 +1,4 @@
-package com.tinkerpop.blueprints.extensions.fgf;
+package com.tinkerpop.blueprints.extensions.io.fgf;
 
 import java.util.Map;
 

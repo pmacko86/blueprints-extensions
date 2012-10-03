@@ -1,4 +1,4 @@
-package com.tinkerpop.blueprints.extensions.fgf;
+package com.tinkerpop.blueprints.extensions.io.fgf;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
-import com.tinkerpop.blueprints.extensions.graphml.FastGraphMLReaderProgressListener;
+import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLTokens;
 
 
@@ -42,7 +42,7 @@ public class GraphML2FGF {
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
     public static void convert(final InputStream graphMLInputStream, final FGFWriter fgfWriter,
-    		FastGraphMLReaderProgressListener progressListener) throws IOException {
+    		GraphProgressListener progressListener) throws IOException {
     	convert(graphMLInputStream, fgfWriter, progressListener, null, null, null);
     }
     
@@ -59,7 +59,7 @@ public class GraphML2FGF {
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
     public static void convert(final InputStream graphMLInputStream, final FGFWriter fgfWriter,
-    		FastGraphMLReaderProgressListener progressListener,
+    		GraphProgressListener progressListener,
     		String vertexIdKey, String edgeIdKey, String edgeLabelKey) throws IOException {
 
     	XMLInputFactory inputFactory = XMLInputFactory.newInstance();
@@ -193,7 +193,7 @@ public class GraphML2FGF {
     					
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(numVertices, numEdges);
+    							progressListener.graphProgress(numVertices, numEdges);
     						}
     					}
     					
@@ -213,7 +213,7 @@ public class GraphML2FGF {
     					
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(numVertices, numEdges);
+    							progressListener.graphProgress(numVertices, numEdges);
     						}
     					}
     				}
@@ -224,7 +224,7 @@ public class GraphML2FGF {
     		fgfWriter.close();
     		
     		if (progressListener != null) {
-    			progressListener.inputGraphProgress(numVertices, numEdges);
+    			progressListener.graphProgress(numVertices, numEdges);
     		}
     		
     	} catch (XMLStreamException xse) {

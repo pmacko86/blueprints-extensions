@@ -42,7 +42,7 @@ PROGRAM="`basename $0`"
 # Options
 #
 
-MAIN_CLASS="com.tinkerpop.blueprints.extensions.fgf.tools.FGFTool"
+MAIN_CLASS="com.tinkerpop.blueprints.extensions.io.fgf.tools.FGFTool"
 
 OPT_MEMORY_SIZE=1G
 OPT_MEMORY_SIZE_IS_DEFAULT=yes
