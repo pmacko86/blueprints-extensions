@@ -153,7 +153,7 @@ public class FastGraphMLReader {
      * Input the GraphML stream data into the graph.
      * More control over how data is streamed is provided by this method.
      *
-     * @param inputGraph         the graph to populate with the GraphML data
+     * @param outGraph           the graph to populate with the GraphML data
      * @param graphMLInputStream an InputStream of GraphML data
      * @param bufferSize         the amount of elements to hold in memory before committing a transactions (only valid for TransactionalGraphs)
      * @param vertexIdKey        if the id of a vertex is a &lt;data/&gt; property, fetch it from the data property.
@@ -163,25 +163,25 @@ public class FastGraphMLReader {
      * @param ingestAsUndirected if true, ingest a directed graph as an undirected graph by doubling-up all edges
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
-    public static void inputGraph(final Graph inputGraph, final InputStream graphMLInputStream, int bufferSize,
+    public static void inputGraph(final Graph outGraph, final InputStream graphMLInputStream, int bufferSize,
     		String vertexIdKey, String edgeIdKey, String edgeLabelKey, GraphProgressListener progressListener,
     		boolean ingestAsUndirected) throws IOException {
 
     	XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 
-		if (inputGraph instanceof BulkloadableGraph) {
-			((BulkloadableGraph) inputGraph).startBulkLoad();
+		if (outGraph instanceof BulkloadableGraph) {
+			((BulkloadableGraph) outGraph).startBulkLoad();
 		}
 
     	try {
     		
-    		final Graph graph = inputGraph instanceof TransactionalGraph
-    				? BatchGraph.wrap(inputGraph, bufferSize)
-    				: inputGraph;
+    		final Graph graph = outGraph instanceof TransactionalGraph
+    				? BatchGraph.wrap(outGraph, bufferSize)
+    				: outGraph;
        		
     		final Features features = graph.getFeatures();
     		
-    		boolean supplyPropertiesAsIds = inputGraph instanceof Neo4jBatchGraph;
+    		boolean supplyPropertiesAsIds = graph instanceof Neo4jBatchGraph;
     		boolean supplyIds = !features.ignoresSuppliedIds && !supplyPropertiesAsIds;  
     		
     		XMLStreamReader reader = inputFactory.createXMLStreamReader(graphMLInputStream);
@@ -393,8 +393,8 @@ public class FastGraphMLReader {
     		throw new IOException(xse);
     	}
     	finally {
-    		if (inputGraph instanceof BulkloadableGraph) {
-    			((BulkloadableGraph) inputGraph).stopBulkLoad();
+    		if (outGraph instanceof BulkloadableGraph) {
+    			((BulkloadableGraph) outGraph).stopBulkLoad();
     		}
     	}
     }

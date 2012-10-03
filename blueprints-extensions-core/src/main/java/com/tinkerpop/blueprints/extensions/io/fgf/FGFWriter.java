@@ -55,7 +55,8 @@ public class FGFWriter implements Closeable {
 	 * Destructor
 	 */
 	@Override
-	protected void finalize() {
+	protected void finalize() throws Throwable {
+		super.finalize();
 		try {
 			close();
 		}

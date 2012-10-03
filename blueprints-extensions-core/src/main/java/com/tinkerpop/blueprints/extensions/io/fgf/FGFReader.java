@@ -26,6 +26,9 @@ public class FGFReader implements Closeable {
 	private PropertyType[] propertyTypes;
 	private ObjectType[] vertexTypes;
 	private ObjectType[] edgeTypes;
+	
+	private long totalVertices;
+	private long totalEdges;
 
 	
 	/**
@@ -54,14 +57,18 @@ public class FGFReader implements Closeable {
 		
 		propertyTypes = new PropertyType[(int) din.readLong()];
 		
+		totalVertices = 0;
 		vertexTypes = new ObjectType[(int) din.readLong()];
 		for (int i = 0; i < vertexTypes.length; i++) {
 			vertexTypes[i] = new ObjectType(din.readLong());
+			totalVertices += vertexTypes[i].count;
 		}
 		
+		totalEdges = 0;
 		edgeTypes = new ObjectType[(int) din.readLong()];
 		for (int i = 0; i < edgeTypes.length; i++) {
 			edgeTypes[i] = new ObjectType(din.readLong());
+			totalEdges += edgeTypes[i].count;
 		}
 		
 		
@@ -82,7 +89,8 @@ public class FGFReader implements Closeable {
 	 * Destructor
 	 */
 	@Override
-	protected void finalize() {
+	protected void finalize() throws Throwable {
+		super.finalize();
 		try {
 			close();
 		}
@@ -102,6 +110,26 @@ public class FGFReader implements Closeable {
 		if (closed) return;
 		in.close();
 		closed = true;
+	}
+	
+	
+	/**
+	 * Get the total number of vertices
+	 * 
+	 * @return the total number of vertices
+	 */
+	public long getNumberOfVertices() {
+		return totalVertices;
+	}
+	
+	
+	/**
+	 * Get the total number of edges
+	 * 
+	 * @return the total number of edges
+	 */
+	public long getNumberOfEdges() {
+		return totalEdges;
 	}
 	
 	
