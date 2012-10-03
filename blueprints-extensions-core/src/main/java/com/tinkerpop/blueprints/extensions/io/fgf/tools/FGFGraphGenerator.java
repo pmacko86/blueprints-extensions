@@ -219,7 +219,6 @@ public class FGFGraphGenerator {
     	// Initialize
 		
 		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
-		if (verbose) System.err.print("Generating:");
    	
 		try {
 	    	vertices = n;
@@ -234,6 +233,8 @@ public class FGFGraphGenerator {
     	
     	
     	// Generate the edges
+		
+		if (verbose) System.err.print("Generating:");
     	
     	int edge_i = 0;
     	int[] otherVertices = new int[(int) m];
