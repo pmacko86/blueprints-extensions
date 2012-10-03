@@ -134,6 +134,16 @@ public class FGFReader implements Closeable {
 	
 	
 	/**
+	 * Get all property types
+	 * 
+	 * @return an array of all property types
+	 */
+	public PropertyType[] getPropertyTypes() {
+		return propertyTypes;
+	}
+	
+	
+	/**
 	 * Read properties
 	 * 
 	 * @param oin the object input stream
@@ -194,6 +204,7 @@ public class FGFReader implements Closeable {
 		
 		// Read the vertex types
 		
+		long id = 0;
 		for (ObjectType t : vertexTypes) {
 			
 			ObjectInputStream iin = new ObjectInputStream(din);
@@ -207,11 +218,11 @@ public class FGFReader implements Closeable {
 			
 			// Read the vertices
 			
-			for (long id = 0; id < t.count; id++) {
+			for (long i = 0; i < t.count; i++) {
 				
 				readProperties(iin, properties);
 				
-				if (handler != null) handler.vertex(id, t.name, properties);
+				if (handler != null) handler.vertex(id++, t.name, properties);
 			}
 			
 			if (handler != null) handler.vertexTypeEnd(t.name, t.count);
@@ -220,7 +231,7 @@ public class FGFReader implements Closeable {
 		
 		// Read the edge types
 		
-		long id = 0;
+		id = 0;
 		for (ObjectType t : edgeTypes) {
 			
 			ObjectInputStream iin = new ObjectInputStream(din);

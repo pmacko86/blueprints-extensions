@@ -70,8 +70,7 @@ public class FGFGraphLoader {
 
     	try {
     		final Graph graph = outGraph instanceof TransactionalGraph
-    				? BatchGraph.wrap(outGraph, bufferSize)
-    				: outGraph;
+    				? BatchGraph.wrap(outGraph, bufferSize) : outGraph;
 
     		Loader l = new Loader(graph, reader, listener);
     		reader.read(l);
@@ -81,7 +80,7 @@ public class FGFGraphLoader {
 				listener.graphProgress((int) reader.getNumberOfVertices(),
 						(int) reader.getNumberOfEdges());
 			}
-   	}
+		}
     	finally {
     		if (outGraph instanceof BulkloadableGraph) {
     			((BulkloadableGraph) outGraph).stopBulkLoad();

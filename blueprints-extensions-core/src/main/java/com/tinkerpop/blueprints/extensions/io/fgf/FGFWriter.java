@@ -120,7 +120,7 @@ public class FGFWriter implements Closeable {
 		
 		// Data
 		
-		byte[] buffer = new byte[64 * 1024];
+		byte[] buffer = new byte[1024 * 1024];
 		int c;
 		
 		propertyTypeOut.seek(0);
@@ -191,6 +191,12 @@ public class FGFWriter implements Closeable {
 	private ObjectType getVertexType(String key) throws IOException {
 		ObjectType t = vertexTypes.get(key);
 		if (t == null) {
+			
+			// FIXME we have an ID problem
+			if (!vertexTypes.isEmpty()) {
+				throw new UnsupportedOperationException("Trying to use more than one vertex type -- not implemented.");
+			}
+			
 			t = new ObjectType(true, key);
 			vertexTypes.put(key, t);
 		}
