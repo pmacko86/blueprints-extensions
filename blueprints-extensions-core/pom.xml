@@ -25,6 +25,14 @@
 	<inceptionYear>2012</inceptionYear>
 
     <dependencies>
+    
+        <!-- GENERAL -->
+		<dependency>
+			<groupId>net.sf.jopt-simple</groupId>
+			<artifactId>jopt-simple</artifactId>
+			<version>4.3</version>
+		</dependency>
+		
         <!-- BLUEPRINTS -->
 		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>

@@ -180,8 +180,8 @@ public class FastGraphMLReader {
        		
     		final Features features = graph.getFeatures();
     		
-    		boolean supplyPropertiesAsVertexIds = inputGraph instanceof Neo4jBatchGraph;
-    		boolean supplyVertexIds = !features.ignoresSuppliedIds && !supplyPropertiesAsVertexIds;  
+    		boolean supplyPropertiesAsIds = inputGraph instanceof Neo4jBatchGraph;
+    		boolean supplyIds = !features.ignoresSuppliedIds && !supplyPropertiesAsIds;  
     		
     		XMLStreamReader reader = inputFactory.createXMLStreamReader(graphMLInputStream);
 
@@ -305,9 +305,9 @@ public class FastGraphMLReader {
     						throw new RuntimeException("Duplicate vertex with the same ID: " + vertexId);
     					}
     					else {
-    						Object a = supplyVertexIds ? vertexId : null;
+    						Object a = supplyIds ? vertexId : null;
     						Object _id = null;
-    						if (supplyPropertiesAsVertexIds) {
+    						if (supplyPropertiesAsIds) {
     							_id = vertexProps.remove("_id");
     							a = vertexProps;
     						}
@@ -316,7 +316,7 @@ public class FastGraphMLReader {
     						if (_id != null) currentVertex.setProperty("_id", _id);
     					}
 
-    					if (!supplyPropertiesAsVertexIds) {
+    					if (!supplyPropertiesAsIds) {
 	    					for (Entry<String, Object> prop : vertexProps.entrySet()) {
 	    						currentVertex.setProperty(prop.getKey(), prop.getValue());
 	    					}
@@ -329,26 +329,39 @@ public class FastGraphMLReader {
     					numVertices++;
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(graph, numVertices, numEdges);
+    							progressListener.inputGraphProgress(numVertices, numEdges);
     						}
     					}
 
     				} else if (elementName.equals(GraphMLTokens.EDGE)) {
-    					Edge currentEdge = graph.addEdge(edgeId, edgeOutVertex, edgeInVertex, edgeLabel);
+    					
+    					Object a = supplyIds ? edgeId : null;
+						Object _id = null;
+						if (supplyPropertiesAsIds) {
+							_id = vertexProps.remove("_id");
+							a = vertexProps;
+						}
+						
+    					Edge currentEdge = graph.addEdge(a, edgeOutVertex, edgeInVertex, edgeLabel);
+    					if (_id != null) currentEdge.setProperty("_id", _id);
 
-    					for (Entry<String, Object> prop : edgeProps.entrySet()) {
-    						currentEdge.setProperty(prop.getKey(), prop.getValue());
+    					if (!supplyPropertiesAsIds) {
+	    					for (Entry<String, Object> prop : edgeProps.entrySet()) {
+	    						currentEdge.setProperty(prop.getKey(), prop.getValue());
+	    					}
     					}
 
     					numEdges++;
 
     					if (ingestAsUndirected) {
-    						// TODO Do we need to check whether the edge we are about to add already exists?
+    						// Don't check whether the edge we are about to add already exists (we might need to revisit this)
 
-							Edge edge = graph.addEdge(null, edgeInVertex, edgeOutVertex, edgeLabel);
+							Edge edge = graph.addEdge(supplyPropertiesAsIds ? a : null, edgeInVertex, edgeOutVertex, edgeLabel);
 
-							for (Entry<String, Object> prop : edgeProps.entrySet()) {
-								edge.setProperty(prop.getKey(), prop.getValue());
+							if (!supplyPropertiesAsIds) {
+								for (Entry<String, Object> prop : edgeProps.entrySet()) {
+									edge.setProperty(prop.getKey(), prop.getValue());
+								}
 							}
 
 							numEdges++;
@@ -363,7 +376,7 @@ public class FastGraphMLReader {
 
     					if (progressListener != null) {
     						if ((numVertices + numEdges) % 1000 == 0) {
-    							progressListener.inputGraphProgress(graph, numVertices, numEdges);
+    							progressListener.inputGraphProgress(numVertices, numEdges);
     						}
     					}
     				}
@@ -373,7 +386,7 @@ public class FastGraphMLReader {
     		reader.close();
 
     		if (progressListener != null) {
-    			progressListener.inputGraphProgress(graph, numVertices, numEdges);
+    			progressListener.inputGraphProgress(numVertices, numEdges);
     		}
     	} catch (XMLStreamException xse) {
     		throw new IOException(xse);
