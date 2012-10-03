@@ -11,6 +11,7 @@ import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
+import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
@@ -45,6 +46,21 @@ public class FGFGraphLoader {
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public void loadTo(Graph outGraph, int bufferSize) throws IOException, ClassNotFoundException {
+		loadTo(outGraph, bufferSize, null);
+	}
+	
+	
+	/**
+	 * Load to an instance of a Graph
+	 * 
+	 * @param outGraph the graph to populate with the data
+	 * @param bufferSize the transaction buffer size
+	 * @param listener the progress listener
+	 * @throws IOException on I/O or parse error
+	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 */
+	public void loadTo(Graph outGraph, int bufferSize,
+			GraphProgressListener listener) throws IOException, ClassNotFoundException {
 		
 		FGFReader reader = new FGFReader(file);
 
@@ -57,10 +73,15 @@ public class FGFGraphLoader {
     				? BatchGraph.wrap(outGraph, bufferSize)
     				: outGraph;
 
-    		Loader l = new Loader(graph, reader);
+    		Loader l = new Loader(graph, reader, listener);
     		reader.read(l);
     		l = null;
-    	}
+    		
+			if (listener != null) {
+				listener.graphProgress((int) reader.getNumberOfVertices(),
+						(int) reader.getNumberOfEdges());
+			}
+   	}
     	finally {
     		if (outGraph instanceof BulkloadableGraph) {
     			((BulkloadableGraph) outGraph).stopBulkLoad();
@@ -76,6 +97,7 @@ public class FGFGraphLoader {
 		
 		private Graph graph;
 		private FGFReader reader;
+		private GraphProgressListener listener;
 		
 		@SuppressWarnings("unused")
 		private Features features;
@@ -83,23 +105,29 @@ public class FGFGraphLoader {
 		
 		private Vertex[] vertices;
 		private Map<String, Object> tempMap;
+		private long verticesLoaded;
+		private long edgesLoaded;
 		
 		
 		/**
 		 * Create an instance of class Loader
 		 * @param graph the graph
 		 * @param reader the input file reader
+		 * @param listener the progress listener
 		 */
-		public Loader(Graph graph, FGFReader reader) {
+		public Loader(Graph graph, FGFReader reader, GraphProgressListener listener) {
 			
 			this.graph = graph;
 			this.reader = reader;
+			this.listener = listener;
 			
 			this.features = graph.getFeatures();
 			this.supplyPropertiesAsIds = graph instanceof Neo4jBatchGraph;
 			
 			this.vertices = new Vertex[(int) this.reader.getNumberOfVertices()];
 			this.tempMap = new HashMap<String, Object>();
+			this.verticesLoaded = 0;
+			this.edgesLoaded = 0;
 		}
 
 		
@@ -127,6 +155,7 @@ public class FGFGraphLoader {
 			
 			Vertex v = graph.addVertex(a);
 			vertices[(int) id] = v;
+			verticesLoaded++;
 			
 			if (!supplyPropertiesAsIds) {
 				boolean hasType = false;
@@ -137,6 +166,10 @@ public class FGFGraphLoader {
 				if (!hasType && !"".equals(type)) {
 					v.setProperty("type", type);
 				}
+			}
+			
+			if (listener != null && verticesLoaded % 10000 == 0) {
+				listener.graphProgress((int) verticesLoaded, 0);
 			}
 		}
 
@@ -163,11 +196,16 @@ public class FGFGraphLoader {
 			}
 			
 			Edge e = graph.addEdge(a, vertices[(int) head], vertices[(int) tail], type);
+			edgesLoaded++;
 			
 			if (!supplyPropertiesAsIds) {
 				for (Map.Entry<PropertyType, Object> p : properties.entrySet()) {
 					e.setProperty(p.getKey().getName(), p.getValue());
 				}
+			}
+			
+			if (listener != null && edgesLoaded % 10000 == 0) {
+				listener.graphProgress((int) verticesLoaded, (int) edgesLoaded);
 			}
 		}
 
