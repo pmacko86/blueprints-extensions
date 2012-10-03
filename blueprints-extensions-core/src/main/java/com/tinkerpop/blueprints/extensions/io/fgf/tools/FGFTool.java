@@ -110,6 +110,11 @@ public class FGFTool {
     		System.err.println("Error: " + e.getMessage());
     		System.exit(1);
 	    }
+	    catch (Throwable e) {
+	    	System.err.println("Error: " + e.getMessage());
+	    	e.printStackTrace(System.err);
+    		System.exit(1);
+	    }
      }
 
     

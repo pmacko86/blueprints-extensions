@@ -21,8 +21,8 @@ public class FGFGraphGenerator {
 	
 	private static boolean verbose = false;
 	
-	private static long[] heads = null;
-	private static long[] tails = null;
+	private static int[] heads = null;
+	private static int[] tails = null;
 	private static long vertices = 0;
 	
 	
@@ -204,12 +204,16 @@ public class FGFGraphGenerator {
     		throw new RuntimeException("Error: Invalid number of model arguments (please use --help for help)");
     	}
     	
-    	int n = Integer.parseInt(args[0]);
-    	int m = Integer.parseInt(args[1]);
+    	long n = Long.parseLong(args[0]);
+    	long m = Long.parseLong(args[1]);
     	int zeroAppeal = 8;
     	
     	if (n < 1) throw new RuntimeException("Error: n < 1");
     	if (m < 1) throw new RuntimeException("Error: m < 1");
+    	
+    	if (m * (n - 1) >= Integer.MAX_VALUE) {
+    		throw new RuntimeException("Error: Too many edges!");
+    	}
     	
     	
     	// Initialize
@@ -217,15 +221,22 @@ public class FGFGraphGenerator {
 		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
 		if (verbose) System.err.print("Generating:");
    	
-    	vertices = n;
-    	heads = new long[m * (n - 1)];
-    	tails = new long[m * (n - 1)];
+		try {
+	    	vertices = n;
+	    	heads = new int[(int) (m * (n - 1))];
+	    	tails = new int[(int) (m * (n - 1))];
+		}
+		catch (OutOfMemoryError e) {
+			throw new RuntimeException("Error: Out of memory -- need at least "
+					+ Math.round(Math.ceil((((m * (n - 1)) * 8) / 1048576.0 + 256) / 1024.0)) + " GB "
+					+ "(use the +help option to see how to set it)");
+		}
     	
     	
     	// Generate the edges
     	
     	int edge_i = 0;
-    	long[] otherVertices = new long[m];
+    	int[] otherVertices = new int[(int) m];
     	
     	for (int i = 1; i < n; i++) {
     		
@@ -245,7 +256,7 @@ public class FGFGraphGenerator {
     			long r = (long) (random.nextDouble() * totalPts);
 
     			if (r < zeroAppealPts) {
-    				otherVertices[j] = r / zeroAppeal;
+    				otherVertices[j] = (int) (r / zeroAppeal);
     				assert otherVertices[j] < i;
     			}
     			else {
@@ -258,7 +269,7 @@ public class FGFGraphGenerator {
 
     		// Create the edges
 
-    		for (long o : otherVertices) {
+    		for (int o : otherVertices) {
     			heads[edge_i] = o;
     			tails[edge_i] = i;
     			edge_i++;
