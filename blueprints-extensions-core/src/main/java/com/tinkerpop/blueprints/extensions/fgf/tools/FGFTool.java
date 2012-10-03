@@ -25,19 +25,21 @@ import com.tinkerpop.blueprints.extensions.graphml.FastGraphMLReaderProgressList
  */
 public class FGFTool {
 	
-	private static final String PROGRAM_NAME = "fgftool.sh";
+	static final String PROGRAM_NAME = "fgftool.sh";
+	static final String PROGRAM_LONG_NAME = "Fast Graph Format -- a suite of command-line tools";
 	
 	
 	/**
 	 * Print the usage info for the tool
 	 */
 	private static void usage() {
-		System.err.println("Fast Graph Format -- a suite of command-line tools");
+		System.err.println(PROGRAM_LONG_NAME);
 		System.err.println("");
 		System.err.println("Usage: " + PROGRAM_NAME + " TOOL [OPTIONS]");
 		System.err.println("");
 		System.err.println("Tools:");
 		System.err.println("  dump          Dump a .fgf file");
+		System.err.println("  generate      Generate a graph and save it as .fgf");
 		System.err.println("  graphml2fgf   Convert a .graphml file to a .fgf file");
 		System.err.println("  help          Print this help");
 		System.err.println("  stat          Print graph statistics of a .fgf file");
@@ -49,7 +51,7 @@ public class FGFTool {
      * 
      * @throws IOException on I/O error 
      */
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws Exception {
     	
     	if (args.length == 0) {
     		usage();
@@ -78,6 +80,13 @@ public class FGFTool {
 	    	}
 	    	
 	    	
+	    	// Tool: generate
+	    	
+	    	if ("generate".equals(tool)) {
+	    		System.exit(FGFGraphGenerator.run(tool, toolArgs));
+	    	}
+	    	
+	    	
 	    	// Tool: graphml2fgf
 	    	
 	    	if ("graphml2fgf".equals(tool)) {
@@ -90,10 +99,16 @@ public class FGFTool {
 	    	if ("stat".equals(tool)) {
 	    		System.exit(stat(tool, toolArgs));
 	    	}
+	    	
+	    	
+	    	// Error
+	    	
+    		System.err.println("Error: Invalid tool (please use \"" + PROGRAM_NAME + " help\" for a list)");
+    		System.exit(1);
 	    }
 	    catch (IOException e) {
     		System.err.println("Error: " + e.getMessage());
-    		System.exit(1);	    	
+    		System.exit(1);
 	    }
      }
 
@@ -120,7 +135,7 @@ public class FGFTool {
 			options = parser.parse(args);
 		}
 		catch (Exception e) {
-			System.err.println("Invalid options (please use --help for a list): " + e.getMessage());
+			System.err.println("Error: Invalid options (please use --help for a list): " + e.getMessage());
 			return 1;
 		}
 		
@@ -130,7 +145,7 @@ public class FGFTool {
 		// Parse the command-line options: Options & help
 		
 		if (options.has("help") || l.size() != 1) {
-			System.err.println("Fast Graph Format -- a suite of command-line tools");
+			System.err.println(PROGRAM_LONG_NAME);
 			System.err.println("");
 			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.graphml");
 			System.err.println("");
@@ -179,7 +194,7 @@ public class FGFTool {
 				@Override
 				public void vertex(long id, String type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Node " + id + ", type " + type);
+					System.out.print("Node " + id + ", type " + ("".equals(type) ? "<default>" : type));
 					printProperties(properties);
 					System.out.println();
 				}
@@ -199,7 +214,8 @@ public class FGFTool {
 				@Override
 				public void edge(long id, long head, long tail, String type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Edge " + id + ": " + head + " ---> " + tail + ", type " + type);
+					System.out.print("Edge " + id + ": " + head + " ---> " + tail
+							+ ", type " + ("".equals(type) ? "<default>" : type));
 					printProperties(properties);
 					System.out.println();
 				}
@@ -237,7 +253,7 @@ public class FGFTool {
 			options = parser.parse(args);
 		}
 		catch (Exception e) {
-			System.err.println("Invalid options (please use --help for a list): " + e.getMessage());
+			System.err.println("Error: Invalid options (please use --help for a list): " + e.getMessage());
 			return 1;
 		}
 		
@@ -247,7 +263,7 @@ public class FGFTool {
 		// Parse the command-line options: Options & help
 		
 		if (options.has("help") || l.size() != 2) {
-			System.err.println("Fast Graph Format -- a suite of command-line tools");
+			System.err.println(PROGRAM_LONG_NAME);
 			System.err.println("");
 			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.graphml OUTPUT.fgf");
 			System.err.println("");
@@ -277,7 +293,7 @@ public class FGFTool {
     	FGFWriter out = new FGFWriter(new File(outputFile));
     	
     	if (verbose) System.err.print("Converting:");
-    	GraphML2FGF.convert(fin, out, verbose ? new GraphMLReaderProgressListener() : null);
+    	GraphML2FGF.convert(fin, out, verbose ? new GraphReaderProgressListener() : null);
     	if (verbose) System.err.println();
 
     	return 0;
@@ -306,7 +322,7 @@ public class FGFTool {
 			options = parser.parse(args);
 		}
 		catch (Exception e) {
-			System.err.println("Invalid options (please use --help for a list): " + e.getMessage());
+			System.err.println("Error: Invalid options (please use --help for a list): " + e.getMessage());
 			return 1;
 		}
 		
@@ -316,7 +332,7 @@ public class FGFTool {
 		// Parse the command-line options: Options & help
 		
 		if (options.has("help") || l.size() != 1) {
-			System.err.println("Fast Graph Format -- a suite of command-line tools");
+			System.err.println(PROGRAM_LONG_NAME);
 			System.err.println("");
 			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.graphml");
 			System.err.println("");
@@ -339,7 +355,8 @@ public class FGFTool {
 				
 				@Override
 				public void vertexTypeStart(String type, long count) {
-					System.out.println("" + count + " node" + (count == 1 ? "" : "s") + " of type " + type);
+					System.out.println("" + count + " node" + (count == 1 ? "" : "s")
+							+ " of type " + ("".equals(type) ? "<default>" : type));
 				}
 				
 				@Override
@@ -357,7 +374,8 @@ public class FGFTool {
 				
 				@Override
 				public void edgeTypeStart(String type, long count) {
-					System.out.println("" + count + " edge" + (count == 1 ? "" : "s") + " of type " + type);
+					System.out.println("" + count + " edge" + (count == 1 ? "" : "s")
+							+ " of type " + ("".equals(type) ? "<default>" : type));
 				}
 				
 				@Override
@@ -380,7 +398,7 @@ public class FGFTool {
     /**
      * Progress listener for the command-line tool
      */
-    private static class GraphMLReaderProgressListener implements FastGraphMLReaderProgressListener {
+    static class GraphReaderProgressListener implements FastGraphMLReaderProgressListener {
     	
     	private static final String BACKSPACES = "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
     	

@@ -134,14 +134,14 @@ public class GraphML2FGF {
     					// Automatically create vertices if they do not already exist
 
     					if (null == edgeOutVertex) {
-    						edgeOutVertex = fgfWriter.writeVertex("default", null);
+    						edgeOutVertex = fgfWriter.writeVertex("", null);
     						vertexMap.put(outVertexId, edgeOutVertex);
     						if (vertexIdKey != null)
     							// Default to standard ID system (in case no mapped ID is found later)
     							vertexMappedIdMap.put(outVertexId, outVertexId);
     					}
     					if (null == edgeInVertex) {
-    						edgeInVertex = fgfWriter.writeVertex("default", null);
+    						edgeInVertex = fgfWriter.writeVertex("", null);
     						vertexMap.put(inVertexId, edgeInVertex);
     						if (vertexIdKey != null)
     							// Default to standard ID system (in case no mapped ID is found later)
@@ -183,7 +183,7 @@ public class GraphML2FGF {
 
     				if (elementName.equals(GraphMLTokens.NODE)) {
     					
-    					vertexLongId = fgfWriter.writeVertex("default", vertexProps);
+    					vertexLongId = fgfWriter.writeVertex("", vertexProps);
        					vertexMap.put(vertexId, vertexLongId);
     					numVertices++;
  

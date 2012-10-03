@@ -259,7 +259,7 @@ public class FGFWriter implements Closeable {
 			}
 		}
 		else {
-			out.writeShort(0);
+			out.write(0);
 		}
 	}
 	
