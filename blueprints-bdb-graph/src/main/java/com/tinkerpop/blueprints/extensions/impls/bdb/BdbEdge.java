@@ -263,8 +263,7 @@ public class BdbEdge extends BdbElement implements Edge {
     	StringBinding.stringToEntry(pkey, data);
     	
         try {
-        	//FIXME This is EDGE not a VERTEX!!!!
-        	cursor = graph.vertexPropertyDb.openCursor(null,  null);
+        	cursor = graph.edgePropertyDb.openCursor(null,  null);
         	
         	status = cursor.getSearchBothRange(key, data, null);
         	if (status == OperationStatus.SUCCESS) {
@@ -301,8 +300,7 @@ public class BdbEdge extends BdbElement implements Edge {
 		Set<String> ret = new HashSet<String>();
 		
 		try {
-        	//FIXME This is EDGE not a VERTEX!!!!
-			cursor = this.graph.vertexPropertyDb.openCursor(null, null);
+			cursor = this.graph.edgePropertyDb.openCursor(null, null);
 			
 			status = cursor.getSearchKey(key, data, null);
 			key.setPartial(0, 0, true);
@@ -341,15 +339,14 @@ public class BdbEdge extends BdbElement implements Edge {
     	
         try {
             //graph.autoStartTransaction();
-        	//FIXME This is EDGE not a VERTEX!!!!
-        	cursor = this.graph.vertexPropertyDb.openCursor(null,  null);
+        	cursor = this.graph.edgePropertyDb.openCursor(null,  null);
         	
         	// If pkey exists, delete it.
         	status = cursor.getSearchBothRange(key, data, null);
         	if (status == OperationStatus.SUCCESS) {
         		
-        		//XXX dmargo: This could be done partially, but I'm not sure the benefits
-        		//outweigh instantiating a new DatabaseEntry.
+        		// dmargo: This could be done partially, but I'm not sure the benefits
+        		// outweigh instantiating a new DatabaseEntry.
         		status = cursor.getCurrent(key, data, null);
         		if (status == OperationStatus.SUCCESS) {
         			
@@ -397,7 +394,7 @@ public class BdbEdge extends BdbElement implements Edge {
         try {
             //graph.autoStartTransaction();
         	
-        	cursor = graph.vertexPropertyDb.openCursor(null,  null);
+        	cursor = graph.edgePropertyDb.openCursor(null,  null);
         	
         	// If pkey exists, delete it.
         	if (cursor.getSearchBothRange(key, data, null) == OperationStatus.SUCCESS) {
