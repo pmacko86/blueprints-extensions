@@ -22,14 +22,14 @@ Database Environment:
     
 Database vertex.db:
   - Vertices, only used to check vertex existence
-  - Queue (no duplicates)
+  - Queue
   - Key:
      [long  ] vertex ID
   - Data: none
 
 Database vertexProperty.db:
   - Vertex properties
-  - B-Tree with sorted duplicates
+  - B-Tree with sorted duplicate data items
   - Key:
      [long  ] vertex ID
   - Data:
@@ -42,7 +42,7 @@ Database vertexProperty.db:
     
 Database out.db:
   - Outgoing edges
-  - B-Tree with sorted duplicates
+  - B-Tree with sorted duplicate data items
   - Key:
      [long  ] out vertex ID
   - Data:
@@ -51,7 +51,7 @@ Database out.db:
     
 Database in.db:
   - Incoming edges
-  - B-Tree with sorted duplicates
+  - B-Tree with sorted duplicate data items
   - Key:
      [long  ] in vertex ID
   - Data:
@@ -60,7 +60,7 @@ Database in.db:
 
 Database edgeProperty.db:
   - Edge properties
-  - B-Tree with sorted duplicates
+  - B-Tree with sorted duplicate data items
   - Key:
      [long  ] out vertex ID
      [String] edge label
