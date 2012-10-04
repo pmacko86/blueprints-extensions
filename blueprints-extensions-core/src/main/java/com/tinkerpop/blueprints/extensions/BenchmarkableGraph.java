@@ -38,4 +38,11 @@ public interface BenchmarkableGraph extends Graph {
      * @return a random edge
      */
     public Edge getRandomEdge();
+    
+    /**
+     * Return the buffer pool size.
+     * 
+     * @return the buffer pool size in MB
+     */
+    public int getBufferPoolSize();
 }

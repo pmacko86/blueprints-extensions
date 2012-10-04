@@ -2,6 +2,7 @@ package com.tinkerpop.blueprints.extensions.impls.dex;
 
 import java.util.NoSuchElementException;
 
+import com.sparsity.dex.gdb.DexProperties;
 import com.sparsity.dex.gdb.Graph;
 import com.sparsity.dex.gdb.ObjectType;
 import com.sparsity.dex.gdb.Type;
@@ -154,5 +155,27 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     			continue;
     		}
     	}
+    }  
+    
+    
+    /**
+     * Return the buffer pool size.
+     * 
+     * @return the buffer pool size in MB
+     */
+    @Override
+    public int getBufferPoolSize() {
+    	
+    	int frameSize = DexProperties.getInteger("dex.io.pool.frame.size", 1)
+    			* DexProperties.getInteger("dex.storage.extentsize", 4 /* KB */);
+    	int maxPersistentPool = DexProperties.getInteger("dex.io.pool.persistent.maxsize", 0);
+    	if (maxPersistentPool > 0 && frameSize > 0) {
+    		return maxPersistentPool * frameSize / 1024;
+    	}
+    	
+    	int maxCache = DexProperties.getInteger("dex.io.cache.maxsize", -1);
+    	if (maxCache >= 0) return maxCache - 64;	// XXX This is horrible hack!
+    	
+    	throw new IllegalStateException("Cannot determine the persitent pool size.");
     }
 }

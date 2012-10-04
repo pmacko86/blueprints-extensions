@@ -177,4 +177,15 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
         
         return new Neo4jEdge(rel, this);
     }
+    
+    
+    /**
+     * Return the buffer pool size.
+     * 
+     * @return the buffer pool size in MB
+     */
+    @Override
+    public int getBufferPoolSize() {
+    	throw new UnsupportedOperationException();
+    }
 }

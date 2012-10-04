@@ -653,6 +653,35 @@ public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, Benc
     public Iterable<Vertex> getShortestPath(final Vertex source, final Vertex target) {
     	return SqlVertexSequence.dijkstra(this, ((SqlVertex) source).vid, ((SqlVertex) target).vid);
     }
+    
+    
+    /**
+     * Return the buffer pool size.
+     * 
+     * @return the buffer pool size in MB
+     */
+    public int getBufferPoolSize() {
+    	long r;
+        try {
+        	Statement statement = connection.createStatement();
+        	ResultSet rs = statement.executeQuery("select variable_value/1048576 from information_schema.global_variables "
+        			+ "where variable_name=\"innodb_buffer_pool_size\"");
+        	if (!rs.next()) {
+        		rs.close();
+        		statement.close();
+        		throw new RuntimeException("Could not read the innodb_buffer_pool_size variable");
+        	}
+        	r = rs.getLong(1);
+        	rs.close();
+    		statement.close();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }   
+        return (int) r;
+    }
+
 
     public void clear() {
         try {

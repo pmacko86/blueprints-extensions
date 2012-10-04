@@ -36,6 +36,7 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
 	final protected static BdbRecordNumberComparator recordNumberComparator = new BdbRecordNumberComparator();
 	
     private Environment dbEnv;
+    private int persistentCacheSize;
   
     public Database vertexDb;
     public Database outDb;
@@ -97,6 +98,9 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
      * @param persistentCacheSize the database cache size (in MB) for the persistent data.
      */
     public BdbGraph(final String directory, int persistentCacheSize) {
+    	
+    	this.persistentCacheSize = persistentCacheSize;
+    	
         try {
         	File envHome = new File(directory);
         	envHome.mkdirs();
@@ -150,6 +154,17 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
     
 
     // BLUEPRINTS GRAPH INTERFACE
+    
+    
+    /**
+     * Return the buffer pool size.
+     * 
+     * @return the buffer pool size in MB
+     */
+    @Override
+    public int getBufferPoolSize() {
+    	return persistentCacheSize;
+    }
 
     public Vertex addVertex(final Object id) {        
         try {
