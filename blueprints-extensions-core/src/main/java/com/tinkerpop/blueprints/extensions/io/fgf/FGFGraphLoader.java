@@ -22,31 +22,19 @@ import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
  * 
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public class FGFGraphLoader {
-
-	private File file;
-	
-	
-	/**
-	 * Create a new instance of the class FGFGraphLoader
-	 * 
-	 * @param file the input file
-	 */
-	public FGFGraphLoader(File file) {
-		this.file = file;
-	}
-	
+public class FGFGraphLoader {	
 	
 	/**
 	 * Load to an instance of a Graph
 	 * 
 	 * @param outGraph the graph to populate with the data
+	 * @param file the input file
 	 * @param bufferSize the transaction buffer size
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public void loadTo(Graph outGraph, int bufferSize) throws IOException, ClassNotFoundException {
-		loadTo(outGraph, bufferSize, null);
+	public static void loadTo(Graph outGraph, File file, int bufferSize) throws IOException, ClassNotFoundException {
+		load(outGraph, file, bufferSize, null);
 	}
 	
 	
@@ -54,12 +42,13 @@ public class FGFGraphLoader {
 	 * Load to an instance of a Graph
 	 * 
 	 * @param outGraph the graph to populate with the data
+	 * @param file the input file
 	 * @param bufferSize the transaction buffer size
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public void loadTo(Graph outGraph, int bufferSize,
+	public static void load(Graph outGraph, File file, int bufferSize,
 			GraphProgressListener listener) throws IOException, ClassNotFoundException {
 		
 		FGFReader reader = new FGFReader(file);
@@ -92,7 +81,7 @@ public class FGFGraphLoader {
 	/**
 	 * The actual graph loader
 	 */
-	private class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFReaderHandler {
 		
 		private Graph graph;
 		private FGFReader reader;

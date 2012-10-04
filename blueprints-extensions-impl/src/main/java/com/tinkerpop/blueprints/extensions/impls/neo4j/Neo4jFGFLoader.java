@@ -7,9 +7,6 @@ import java.util.Map;
 
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.unsafe.batchinsert.BatchInserter;
-import org.neo4j.unsafe.batchinsert.BatchInserterIndexProvider;
-import org.neo4j.unsafe.batchinsert.BatchInserters;
-import org.neo4j.unsafe.batchinsert.LuceneBatchInserterIndexProvider;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
@@ -23,69 +20,35 @@ import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
 public class Neo4jFGFLoader {
-
-	private final BatchInserter graph;
-	private final BatchInserterIndexProvider indexProvider;
-
-
-	/**
-	 * Create an instance of class Neo4jFGFLoader
-	 * 
-	 * @param directory the database directory
-	 * @param parameters Neo4j configuration
-	 */
-	public Neo4jFGFLoader(final String directory, final Map<String, String> parameters) {
-		this.graph = BatchInserters.inserter(directory, parameters);
-		this.indexProvider = new LuceneBatchInserterIndexProvider(graph);
-	}
-
-
-	/**
-	 * Shutdown the database
-	 */
-	public void shutdown() {
-		this.flushIndices();
-		this.indexProvider.shutdown();
-		this.graph.shutdown();
-		//removeReferenceNodeAndFinalizeKeyIndices();
-	}
-
-
-	/**
-	 * Flush the indices
-	 */
-	private void flushIndices() {
-		/*for (final Neo4jBatchIndex index : this.indices.values()) {
-			index.flush();
-		}*/
-	}
 	
 	
 	/**
 	 * Load from a FGF file
 	 * 
+	 * @param inserter the batch inserter
 	 * @param file the input file
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public void loadFrom(File file) throws IOException, ClassNotFoundException {
-		loadFrom(file, null);
+	public static void load(BatchInserter inserter, File file) throws IOException, ClassNotFoundException {
+		load(inserter, file, null);
 	}	
 	
 	
 	/**
 	 * Load from a FGF file
 	 * 
-	 * @param file the input file
+	 * @param inserter the batch inserter
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public void loadFrom(File file, GraphProgressListener listener) throws IOException, ClassNotFoundException {
+	public static void load(BatchInserter inserter, File file, GraphProgressListener listener)
+			throws IOException, ClassNotFoundException {
 		
 		FGFReader reader = new FGFReader(file);
 
-		Loader l = new Loader(reader, listener);
+		Loader l = new Loader(inserter, reader, listener);
 		reader.read(l);
 		l = null;
 		
@@ -93,14 +56,15 @@ public class Neo4jFGFLoader {
 			listener.graphProgress((int) reader.getNumberOfVertices(),
 					(int) reader.getNumberOfEdges());
 		}
-	}	
+	}
 	
 	
 	/**
 	 * The actual graph loader
 	 */
-	private class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFReaderHandler {
 		
+		private final BatchInserter graph;
 		private FGFReader reader;
 		private GraphProgressListener listener;
 		
@@ -113,12 +77,14 @@ public class Neo4jFGFLoader {
 		
 		/**
 		 * Create an instance of class Loader
+		 * 
 		 * @param graph the graph
 		 * @param reader the input file reader
 		 * @param listener the progress listener
 		 */
-		public Loader(FGFReader reader, GraphProgressListener listener) {
+		public Loader(BatchInserter graph, FGFReader reader, GraphProgressListener listener) {
 			
+			this.graph = graph;
 			this.reader = reader;
 			this.listener = listener;
 			
