@@ -1,11 +1,20 @@
 package com.tinkerpop.blueprints.extensions.impls.dex;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import com.sparsity.dex.gdb.Attribute;
+import com.sparsity.dex.gdb.AttributeList;
 import com.sparsity.dex.gdb.DexProperties;
 import com.sparsity.dex.gdb.Graph;
 import com.sparsity.dex.gdb.ObjectType;
+import com.sparsity.dex.gdb.StringList;
 import com.sparsity.dex.gdb.Type;
+import com.sparsity.dex.gdb.TypeList;
+import com.sparsity.dex.io.CSVWriter;
+import com.sparsity.dex.io.EdgeTypeExporter;
+import com.sparsity.dex.io.NodeTypeExporter;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
@@ -177,5 +186,97 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     	if (maxCache >= 0) return maxCache - 64;	// XXX This is horrible hack!
     	
     	throw new IllegalStateException("Cannot determine the persitent pool size.");
+    }
+    
+    
+    /**
+     * Export a type - a helper to exportToCSVs()
+     * 
+     * @param dir the directory into which the files should be placed
+     * @param prefix the file name prefix
+     * @param g the graph
+     * @param type the type
+     * @param nodes true if it these are nodes
+     * @throws IOException on I/O error
+     */
+    private void exportTypeToCSV(File dir, String prefix, Graph g, int type, boolean nodes) throws IOException {
+    	
+		// Get and encode the type name
+		
+		String typeName = g.getType(type).getName();
+		String encodedTypeName = "";
+		for (int i = 0; i < typeName.length(); i++) {
+			char c = typeName.charAt(i);
+			if (Character.isLetterOrDigit(c) || c == '_') {
+				encodedTypeName += c;
+			}
+			else {
+				encodedTypeName += "-" + Integer.toHexString(((int) c) < 0 ? -((int) c) : (int) c);
+			}
+		}
+		
+		
+		// Get the list of attributes
+		
+		AttributeList alist = g.findAttributes(type);
+		StringList aNameList = new StringList();
+		for (Integer aindex : alist) {
+			Attribute a = g.getAttribute(aindex);
+			aNameList.add(a.getName());
+		}
+		
+		
+		// Export
+		
+		String fileName = prefix + "-" + (nodes ? "nodes" : "edges") + encodedTypeName + ".csv";
+		File f = new File(dir, fileName);
+		
+		CSVWriter out = new CSVWriter();
+		out.open(f.getAbsolutePath());
+		out.write(aNameList);
+		
+		if (nodes) {
+			NodeTypeExporter exporter = new NodeTypeExporter(out, g, type, alist);
+			exporter.run();
+		}
+		else {
+			// XXX Not working
+			EdgeTypeExporter exporter = new EdgeTypeExporter(out, g, type, alist, 0, 1, 2, 2);
+			exporter.run();
+		}
+		
+		out.close();
+    }
+    
+    
+    /**
+     * Export to a set of .csv files
+     * 
+     * @param dir the directory into which the files should be placed
+     * @param prefix the file name prefix
+     * @throws IOException on I/O error
+     */
+    public void exportToCSVs(File dir, String prefix) throws IOException {
+    	
+    	Graph g = getRawGraph();
+    	dir.mkdirs();
+    	
+    	
+    	// For each vertex type...
+
+    	TypeList tlist = g.findNodeTypes();
+    	for (Integer type : tlist) {
+    		exportTypeToCSV(dir, prefix, g, type, true);
+    	}
+    	tlist.delete();
+
+
+    	// For each edge type...
+
+    	tlist = g.findEdgeTypes();
+    	for (Integer type : tlist) {
+    		exportTypeToCSV(dir, prefix, g, type, false);
+    	}
+    	tlist.delete();
     }
 }

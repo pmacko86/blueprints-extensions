@@ -11,6 +11,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGF2CSV;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
@@ -39,6 +40,7 @@ public class FGFTool {
 		System.err.println("");
 		System.err.println("Tools:");
 		System.err.println("  dump          Dump a .fgf file");
+		System.err.println("  fgf2csv       Convert a .fgf file to a set of .csv files");
 		System.err.println("  generate      Generate a graph and save it as .fgf");
 		System.err.println("  graphml2fgf   Convert a .graphml file to a .fgf file");
 		System.err.println("  help          Print this help");
@@ -77,6 +79,13 @@ public class FGFTool {
 	    	
 	    	if ("dump".equals(tool)) {
 	    		System.exit(dump(tool, toolArgs));
+	    	}
+	    	
+	    	
+	    	// Tool: fgf2csv
+	    	
+	    	if ("fgf2csv".equals(tool)) {
+	    		System.exit(fgf2csv(tool, toolArgs));
 	    	}
 	    	
 	    	
@@ -229,6 +238,99 @@ public class FGFTool {
 			throw new RuntimeException(e);
 		}
     	r.close();
+
+    	return 0;
+    }
+
+    
+    /**
+     * Tool: Convert a .fgf file to a set of .csv files
+     * 
+     * @param tool the tool name
+     * @param args the command-line arguments
+     * @return the exit code
+     * @throws IOException on I/O error
+     * @throws ClassNotFoundException on property unmarshalling error
+     */
+    private static int fgf2csv(String tool, String[] args) throws IOException, ClassNotFoundException {
+    	
+    	
+    	// Parse the command-line options
+    	
+		OptionSet options;
+		OptionParser parser = new OptionParser();
+    	
+		parser.accepts("help");
+    	parser.accepts("p").withRequiredArg().ofType(String.class);
+		parser.accepts("prefix").withRequiredArg().ofType(String.class);
+    	parser.accepts("v");
+		parser.accepts("verbose");
+		
+		try {
+			options = parser.parse(args);
+		}
+		catch (Exception e) {
+			System.err.println("Error: Invalid options (please use --help for a list): " + e.getMessage());
+			return 1;
+		}
+		
+		List<String> l = options.nonOptionArguments();
+		
+		
+		// Parse the command-line options: Options & help
+		
+		if (options.has("help") || l.size() < 1 || l.size() > 2) {
+			System.err.println(PROGRAM_LONG_NAME);
+			System.err.println("");
+			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.fgf [OUTPUT_DIR]");
+			System.err.println("");
+			System.err.println("Options:");
+			System.err.println("  --help               Print this help");
+			System.err.println("  --prefix, -p PREFIX  Set the file name prefix for the output .csv files");
+			System.err.println("  --verbose, -v        Verbose (print progress)");
+			return options.has("help") ? 0 : 1;
+		}
+		
+		boolean verbose = options.has("v") || options.has("verbose");
+		
+		String prefix = null;
+		if (options.has("p") || options.has("prefix")) {
+			prefix = options.valueOf(options.has("p") ? "p" : "prefix").toString();
+		}
+		
+		
+		// Parse the command-line options: Non-optional arguments
+    	
+    	String inputFile = l.get(0);
+    	String outputDir = l.size() > 1 ? l.get(1) : ".";
+    	
+    	if (!inputFile.endsWith(".fgf")) {
+    		System.err.println("Error: The input file needs to have the .fgf extension");
+    		System.exit(1);
+    	}
+    	
+    	File file = new File(inputFile);
+    	File dir  = new File(outputDir);
+    	
+    	if (dir.exists() && !dir.isDirectory()) {
+    		System.err.println("Error: The output directory is not a directory -- " + outputDir);
+    		System.exit(1);
+    	}
+   	
+    	if (prefix == null) {
+    		prefix = file.getName();
+    		if (prefix.endsWith(".fgf")) {
+    			prefix = prefix.substring(0, prefix.length() - 4);
+    		}
+    	}
+    	
+    	
+    	// Tool
+    	
+    	
+    	if (verbose) System.err.print("Converting:");
+    	FGF2CSV.convert(file, dir, prefix, verbose ? new GraphReaderProgressListener() : null);
+    	if (verbose) System.err.println();
 
     	return 0;
     }

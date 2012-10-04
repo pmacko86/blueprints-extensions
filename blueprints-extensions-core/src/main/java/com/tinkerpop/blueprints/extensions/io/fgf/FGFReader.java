@@ -309,6 +309,16 @@ public class FGFReader implements Closeable {
 		
 		
 		/**
+		 * Get the property index
+		 * 
+		 * @return the property index
+		 */
+		public int getIndex() {
+			return index;
+		}
+		
+		
+		/**
 		 * Get the property name
 		 * 
 		 * @return the property name
