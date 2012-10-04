@@ -1,0 +1,70 @@
+  A BerkeleyDB Implementation of a Graph Database
+===================================================
+
+Authors:
+  - Daniel Margo    (http://www.eecs.harvard.edu/~dmargo)
+  - Elaine Angelino (http://www.eecs.harvard.edu/~elaine)
+  - Peter Macko     (http://www.eecs.harvard.edu/~pmacko)
+
+  
+  Environment
+---------------
+  
+Database Environment:
+  - Not transactional
+  - Locking not initialized by default
+  - Cache size and the max cache size set to the value passed in through the
+    BdbGraph constructor
+
+    
+  Vertices and Vertex Properties
+----------------------------------
+    
+Database vertex.db:
+  - Vertices, only used to check vertex existence
+  - Queue (no duplicates)
+  - Key:
+     [long  ] vertex ID
+  - Data: none
+
+Database vertexProperty.db:
+  - Vertex properties
+  - B-Tree with sorted duplicates
+  - Key:
+     [long  ] vertex ID
+  - Data:
+     [String] property key
+     [Object] property value
+
+    
+  Edges and Edge Properties
+-----------------------------
+    
+Database out.db:
+  - Outgoing edges
+  - B-Tree with sorted duplicates
+  - Key:
+     [long  ] out vertex ID
+  - Data:
+     [String] edge label
+     [long  ] in vertex ID
+    
+Database in.db:
+  - Incoming edges
+  - B-Tree with sorted duplicates
+  - Key:
+     [long  ] in vertex ID
+  - Data:
+     [String] edge label
+     [long  ] out vertex ID
+
+Database edgeProperty.db:
+  - Edge properties
+  - B-Tree with sorted duplicates
+  - Key:
+     [long  ] out vertex ID
+     [String] edge label
+     [long  ] in vertex ID
+  - Data:
+     [String] property key
+     [Object] property value

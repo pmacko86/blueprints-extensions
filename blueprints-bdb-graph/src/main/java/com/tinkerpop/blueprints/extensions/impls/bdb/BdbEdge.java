@@ -263,6 +263,7 @@ public class BdbEdge extends BdbElement implements Edge {
     	StringBinding.stringToEntry(pkey, data);
     	
         try {
+        	//FIXME This is EDGE not a VERTEX!!!!
         	cursor = graph.vertexPropertyDb.openCursor(null,  null);
         	
         	status = cursor.getSearchBothRange(key, data, null);
@@ -300,6 +301,7 @@ public class BdbEdge extends BdbElement implements Edge {
 		Set<String> ret = new HashSet<String>();
 		
 		try {
+        	//FIXME This is EDGE not a VERTEX!!!!
 			cursor = this.graph.vertexPropertyDb.openCursor(null, null);
 			
 			status = cursor.getSearchKey(key, data, null);
@@ -339,7 +341,7 @@ public class BdbEdge extends BdbElement implements Edge {
     	
         try {
             //graph.autoStartTransaction();
-        	
+        	//FIXME This is EDGE not a VERTEX!!!!
         	cursor = this.graph.vertexPropertyDb.openCursor(null,  null);
         	
         	// If pkey exists, delete it.
