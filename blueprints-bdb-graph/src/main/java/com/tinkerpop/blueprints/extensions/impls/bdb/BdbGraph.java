@@ -107,7 +107,9 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
         	
         	EnvironmentConfig envConf = new EnvironmentConfig();
             envConf.setAllowCreate(true);
-            envConf.setCacheMax(persistentCacheSize);
+            envConf.setCacheMax(persistentCacheSize * 1048576);
+            envConf.setCacheSize(persistentCacheSize * 1048576);
+            envConf.setCacheCount(1);
             envConf.setInitializeCache(true);
             //envConf.setInitializeLocking(true);
             //envConf.setTransactional(true);
