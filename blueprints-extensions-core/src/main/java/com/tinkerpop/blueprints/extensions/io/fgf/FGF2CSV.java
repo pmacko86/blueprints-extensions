@@ -38,12 +38,75 @@ public class FGF2CSV {
 		try {
 			outputDir.mkdirs();
 			
+			if (listener != null) {
+				listener.graphProgress(0, 0);
+			}
+			
 			Handler handler = new Handler(reader, outputDir, prefix, listener);
 			reader.read(handler);
+			
+			if (listener != null) {
+				listener.graphProgress((int) reader.getNumberOfVertices(), (int) reader.getNumberOfEdges());
+			}
 		}
 		finally {
 			reader.close();
 		}
+	}
+	
+	
+	/**
+	 * Encode a string to a file name friendly string
+	 * 
+	 * @param str the string
+	 * @return the encoded string
+	 */
+	public static String encodeToFileNameFriendlyString(String str) {
+		
+		StringBuilder r = new StringBuilder();
+		
+		for (int i = 0; i < str.length(); i++) {
+			char c = str.charAt(i);
+			
+			if (Character.isLetterOrDigit(c) || c == '_') {
+				r.append(c);
+			}
+			else {
+				r.append('-');
+				r.append(Integer.toHexString(((int) c) < 0 ? -((int) c) : (int) c));
+			}
+		}
+		
+		return r.toString();
+	}
+	
+	
+	/**
+	 * Decode a file name friendly string
+	 * 
+	 * @param str the encoded string
+	 * @return the decoded string
+	 */
+	public static String decodeFileNameFriendlyString(String str) {
+		
+		StringBuilder r = new StringBuilder();
+		
+		for (int i = 0; i < str.length(); i++) {
+			char c = str.charAt(i);
+			
+			if (Character.isLetterOrDigit(c) || c == '_') {
+				r.append(c);
+			}
+			else if (c == '-') {
+				r.append((char) Integer.parseInt(str.substring(i + 1, i + 3), 16));
+				i += 2;
+			}
+			else {
+				throw new IllegalArgumentException("Unexpected character in a string: " + c);
+			}
+		}
+		
+		return r.toString();
 	}
 	
 	
@@ -92,28 +155,28 @@ public class FGF2CSV {
 		 * 
 		 * @param type the type string
 		 * @param nodes true if these are nodes
+		 * @param meta true for the metadata file
 		 */
-		private void createFile(String type, boolean nodes) {
+		private void createFile(String type, boolean nodes, boolean meta) {
+			
+			// Close the previous file, if it is still open
 			
 			try {
 				if (out != null) out.close();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
-					
-			String encodedTypeName = "";
-			for (int i = 0; i < type.length(); i++) {
-				char c = type.charAt(i);
-				if (Character.isLetterOrDigit(c) || c == '_') {
-					encodedTypeName += c;
-				}
-				else {
-					encodedTypeName += "-" + Integer.toHexString(((int) c) < 0 ? -((int) c) : (int) c);
-				}
-			}
 			
-			String fileName = prefix + "-" + (nodes ? "nodes" : "edges") + encodedTypeName + ".csv";
+			
+			// Compose the new file name
+			
+			String fileName = prefix + "-" + (nodes ? "nodes" : "edges")
+					+ encodeToFileNameFriendlyString(type) + (meta ? "-meta" : "") + ".csv";
+			
 			file = new File(outputDir, fileName);
+			
+			
+			// Open the new file
 			
 			try {
 				out = new BufferedWriter(new FileWriter(file));
@@ -134,7 +197,7 @@ public class FGF2CSV {
 			
 			// Create the file
 			
-			createFile(type, nodes);
+			createFile(type, nodes, false);
 			
 			
 			// Write the header
@@ -153,6 +216,77 @@ public class FGF2CSV {
 				out.newLine();
 			}
 			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			
+			
+			// Prepare the custom property metadata
+			
+			for (PropertyType p : reader.getPropertyTypes()) {
+				p.setAux(new MyPropertyMeta());
+			}
+		}
+		
+		
+		/**
+		 * Finish the node or the edge type
+		 * 
+		 * @param type the type string
+		 * @param nodes true if these are nodes
+		 */
+		private void finishType(String type, boolean nodes) {
+			
+			// Close
+			
+			try {
+				if (out != null) out.close();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			
+			
+			// Create the metadata file
+			
+			createFile(type, nodes, true);
+			
+			
+			// Write the header
+			
+			try {
+				out.write("property,type,count");
+				out.newLine();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			
+			
+			// Write the column metadata, but only for the property types that
+			// were used at least once
+			
+			try {
+				for (PropertyType p : reader.getPropertyTypes()) {
+					if (((MyPropertyMeta) p.getAux()).count > 0) {
+						StringEscapeUtils.escapeCsv(out, p.getName());
+						out.write(',');
+						out.write(FGFTypes.toString(p.getType()));
+						out.write(',');
+						out.write("" + ((MyPropertyMeta) p.getAux()).count);
+						out.newLine();
+					}
+				}
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			
+			
+			// Finish
+			
+			try {
+				if (out != null) out.close();
+				out = null;
+			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		}
@@ -200,6 +334,7 @@ public class FGF2CSV {
 					Object value = properties.get(p);
 					if (value != null) {
 						StringEscapeUtils.escapeCsv(out, value.toString());
+						((MyPropertyMeta) p.getAux()).count++;
 					}
 				}
 				out.newLine();
@@ -224,11 +359,7 @@ public class FGF2CSV {
 		 */
 		@Override
 		public void vertexTypeEnd(String type, long count) {
-			try {
-				if (out != null) out.close();
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
+			finishType(type, true);
 		}
 
 		
@@ -267,6 +398,7 @@ public class FGF2CSV {
 					Object value = properties.get(p);
 					if (value != null) {
 						StringEscapeUtils.escapeCsv(out, value.toString());
+						((MyPropertyMeta) p.getAux()).count++;
 					}
 				}
 				out.newLine();
@@ -291,11 +423,25 @@ public class FGF2CSV {
 		 */
 		@Override
 		public void edgeTypeEnd(String type, long count) {
-			try {
-				if (out != null) out.close();
-			} catch (IOException e) {
-				throw new RuntimeException(e);
+			finishType(type, false);
+		}
+		
+		
+		/**
+		 * Additional property type metadata
+		 */
+		private class MyPropertyMeta {
+			
+			/// The count
+			public int count;
+			
+			
+			/**
+			 * Create an instance of class MyPropertyMeta
+			 */
+			public MyPropertyMeta() {
+				count = 0;
 			}
-		}	
+		}
 	}
 }

@@ -40,4 +40,52 @@ public class FGFTypes {
 		
 		return OTHER;
 	}
+	
+	
+	/**
+	 * Convert type number to a string
+	 * 
+	 * @param type the type
+	 * @return the string
+	 */
+	public static String toString(int type) {
+		
+		switch (type) {
+		
+		case OTHER  : return "other";
+		case STRING : return "string";
+
+		case BOOLEAN: return "boolean";
+		case SHORT  : return "short";
+		case INTEGER: return "integer";
+		case LONG   : return "long";
+
+		case FLOAT  : return "float";
+		case DOUBLE : return "double";
+		
+		default:
+			throw new IllegalArgumentException("Invalid FGF property type code");
+		}
+	}
+	
+	
+	/**
+	 * Convert a string type name to its numerical code
+	 * 
+	 * @param str the string name of the type
+	 * @return its numerical value
+	 */
+	public static short fromString(String str) {
+		
+		if ("other"  .equalsIgnoreCase(str)) return OTHER;
+		if ("string" .equalsIgnoreCase(str)) return STRING;
+		if ("boolean".equalsIgnoreCase(str)) return BOOLEAN;
+		if ("short"  .equalsIgnoreCase(str)) return SHORT;
+		if ("integer".equalsIgnoreCase(str)) return INTEGER;
+		if ("long"   .equalsIgnoreCase(str)) return LONG;
+		if ("float"  .equalsIgnoreCase(str)) return FLOAT;
+		if ("double" .equalsIgnoreCase(str)) return DOUBLE;
+		
+		throw new IllegalArgumentException("Invalid FGF property type name");
+	}
 }

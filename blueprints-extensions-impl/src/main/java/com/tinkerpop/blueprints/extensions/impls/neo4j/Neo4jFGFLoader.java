@@ -39,6 +39,7 @@ public class Neo4jFGFLoader {
 	 * Load from a FGF file
 	 * 
 	 * @param inserter the batch inserter
+	 * @param file the input file
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
@@ -113,6 +114,7 @@ public class Neo4jFGFLoader {
 			if (!tempMap.containsKey("type") && !"".equals(type)) {
 				tempMap.put("type", type);
 			}
+			tempMap.put("_original_id", id);
 			
 			long v = graph.createNode(tempMap);
 			vertices[(int) id] = v;
@@ -153,7 +155,7 @@ public class Neo4jFGFLoader {
 				tempMap.put(e.getKey().getName(), e.getValue());
 			}
 			
-			graph.createRelationship(vertices[(int) head], vertices[(int) tail], relationshipType, tempMap);
+			graph.createRelationship(vertices[(int) tail], vertices[(int) head], relationshipType, tempMap);
 			edgesLoaded++;
 			
 			if (listener != null && edgesLoaded % 10000 == 0) {

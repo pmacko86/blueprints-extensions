@@ -201,7 +201,7 @@ public class GraphML2FGF {
 
     				} else if (elementName.equals(GraphMLTokens.EDGE)) {
     					
-    					fgfWriter.writeEdge(edgeOutVertex, edgeInVertex, edgeLabel, edgeProps);
+    					fgfWriter.writeEdge(edgeInVertex /* head/target */, edgeOutVertex /* tail/source */, edgeLabel, edgeProps);
     					numEdges++;
 
     					edgeId = null;

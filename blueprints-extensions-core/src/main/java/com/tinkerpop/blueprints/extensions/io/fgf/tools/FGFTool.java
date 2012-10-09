@@ -228,7 +228,7 @@ public class FGFTool {
 				@Override
 				public void edge(long id, long head, long tail, String type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Edge " + id + ": " + head + " ---> " + tail
+					System.out.print("Edge " + id + ": " + tail + " ---> " + head
 							+ ", type " + ("".equals(type) ? "<default>" : type));
 					printProperties(properties);
 					System.out.println();

@@ -271,8 +271,9 @@ public class FGFGraphGenerator {
     		// Create the edges
 
     		for (int o : otherVertices) {
-    			heads[edge_i] = o;
-    			tails[edge_i] = i;
+    			// New edge: o ---> i
+    			heads[edge_i] = i;
+    			tails[edge_i] = o;
     			edge_i++;
     		}
     		

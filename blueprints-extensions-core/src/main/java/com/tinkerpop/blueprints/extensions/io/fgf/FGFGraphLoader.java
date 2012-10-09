@@ -138,6 +138,7 @@ public class FGFGraphLoader {
 				if (!tempMap.containsKey("type") && !"".equals(type)) {
 					tempMap.put("type", type);
 				}
+				tempMap.put("_original_id", id);
 				a = tempMap;
 			}
 			
@@ -154,6 +155,7 @@ public class FGFGraphLoader {
 				if (!hasType && !"".equals(type)) {
 					v.setProperty("type", type);
 				}
+				v.setProperty("_original_id", id);
 			}
 			
 			if (listener != null && verticesLoaded % 10000 == 0) {
@@ -183,7 +185,7 @@ public class FGFGraphLoader {
 				a = tempMap;
 			}
 			
-			Edge e = graph.addEdge(a, vertices[(int) head], vertices[(int) tail], type);
+			Edge e = graph.addEdge(a, vertices[(int) tail], vertices[(int) head], type);
 			edgesLoaded++;
 			
 			if (!supplyPropertiesAsIds) {
