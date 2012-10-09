@@ -14,6 +14,8 @@ import com.sparsity.dex.gdb.StringList;
 import com.sparsity.dex.io.CSVReader;
 import com.sparsity.dex.io.EdgeTypeLoader;
 import com.sparsity.dex.io.NodeTypeLoader;
+import com.sparsity.dex.io.TypeLoaderEvent;
+import com.sparsity.dex.io.TypeLoaderListener;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGF2CSV;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
@@ -53,11 +55,11 @@ public class DexCSVLoader {
 			GraphProgressListener listener) throws IOException {
 		
 		if (dir.exists() && !dir.isDirectory()) {
-			throw new IOException("The specified directory is not a directory");
+			throw new IOException("The specified directory is not a directory: " + dir.getName());
 		}
 		
 		if (!dir.exists()) {
-			throw new IOException("The specified directory does not exist");
+			throw new IOException("The specified directory does not exist: " + dir.getName());
 		}
 		
 		
@@ -86,6 +88,14 @@ public class DexCSVLoader {
 		
 		if (nodeFiles.size() != 1) {
 			throw new IOException("Only one DEX node type is currently supported");
+		}
+		
+		
+		// Wrap the listener
+		
+		GraphProgressListenerWrapper wrappedListener = null;
+		if (listener != null) {
+			wrappedListener = new GraphProgressListenerWrapper(listener);
 		}
 		
 		
@@ -148,6 +158,10 @@ public class DexCSVLoader {
 			// Create the node loader and fire it off
 			
 			NodeTypeLoader loader = new NodeTypeLoader(reader, graph, type, attributes, attributePositions);
+			if (wrappedListener != null) {
+				loader.setFrequency(10000);
+				loader.register(wrappedListener);
+			}
 			loader.run();
 			
 			
@@ -160,6 +174,8 @@ public class DexCSVLoader {
 		
 		
 		// Load each edge type
+		
+		if (wrappedListener != null) wrappedListener.nodePhase = false;
 		
 		for (File f : edgeFiles) {		
 			
@@ -212,6 +228,10 @@ public class DexCSVLoader {
 			
 			EdgeTypeLoader loader = new EdgeTypeLoader(reader, graph, type,
 					attributes, attributePositions, 0, 1, nodeIdAttribute, nodeIdAttribute);
+			if (wrappedListener != null) {
+				loader.setFrequency(10000);
+				loader.register(wrappedListener);
+			}
 			loader.run();
 			
 			
@@ -308,6 +328,48 @@ public class DexCSVLoader {
 		
 		default:
 			throw new IllegalArgumentException("Unsupported FGF type: " + FGFTypes.toString(type));
+		}
+	}
+	
+	
+	/**
+	 * A wrapper for GraphProgressListener
+	 */
+	private static class GraphProgressListenerWrapper extends TypeLoaderListener {
+		
+		private GraphProgressListener listener;
+		
+		public int nodes = 0;
+		public int edges = 0;
+		public boolean nodePhase = true;
+		
+		
+		/**
+		 * Create an instance of class GraphProgressListenerWrapper
+		 * 
+		 * @param listener the listener to wrap
+		 */
+		public GraphProgressListenerWrapper(GraphProgressListener listener) {
+			this.listener = listener;
+		}
+		
+		
+		/**
+		 * Callback
+		 * 
+		 * @param event the event
+		 */
+		@Override
+		public void notifyEvent(TypeLoaderEvent event) {
+			
+			if (nodePhase) {
+				listener.graphProgress(nodes + (int) event.getCount(), edges);
+				if (event.isLast()) nodes += (int) event.getCount();
+			}
+			else {
+				listener.graphProgress(nodes, edges + (int) event.getCount());
+				if (event.isLast()) edges += (int) event.getCount();
+			}
 		}
 	}
 }
