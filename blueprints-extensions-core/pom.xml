@@ -46,6 +46,11 @@
 		</dependency>
  		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
+			<artifactId>blueprints-dex-graph</artifactId>
+			<version>2.1.0</version>
+		</dependency>
+ 		<dependency>
+			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-neo4jbatch-graph</artifactId>
 			<version>2.1.0</version>
 		</dependency>

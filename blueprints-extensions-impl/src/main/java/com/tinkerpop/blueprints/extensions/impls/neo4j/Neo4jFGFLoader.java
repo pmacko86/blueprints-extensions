@@ -8,10 +8,15 @@ import java.util.Map;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.unsafe.batchinsert.BatchInserter;
 
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
+import com.tinkerpop.blueprints.util.StringFactory;
 
 
 /**
@@ -25,31 +30,33 @@ public class Neo4jFGFLoader {
 	/**
 	 * Load from a FGF file
 	 * 
-	 * @param inserter the batch inserter
+	 * @param graph the batch graph
 	 * @param file the input file
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public static void load(BatchInserter inserter, File file) throws IOException, ClassNotFoundException {
-		load(inserter, file, null);
+	public static void load(Neo4jBatchGraph graph, File file) throws IOException, ClassNotFoundException {
+		load(graph, file, false, null);
 	}	
 	
 	
 	/**
-	 * Load from a FGF file
+	 * Load from a FGF file and optionally index all properties
 	 * 
-	 * @param inserter the batch inserter
+	 * @param graph the batch graph
 	 * @param file the input file
+	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public static void load(BatchInserter inserter, File file, GraphProgressListener listener)
+	public static void load(Neo4jBatchGraph graph, File file,
+			boolean indexAllProperties, GraphProgressListener listener)
 			throws IOException, ClassNotFoundException {
 		
 		FGFReader reader = new FGFReader(file);
 
-		Loader l = new Loader(inserter, reader, listener);
+		Loader l = new Loader(graph, reader, indexAllProperties, listener);
 		reader.read(l);
 		l = null;
 		
@@ -65,8 +72,10 @@ public class Neo4jFGFLoader {
 	 */
 	private static class Loader implements FGFReaderHandler {
 		
-		private final BatchInserter graph;
+		private final Neo4jBatchGraph graph;
+		private final BatchInserter inserter;
 		private FGFReader reader;
+		private boolean indexAllProperties;
 		private GraphProgressListener listener;
 		
 		private long[] vertices;
@@ -74,6 +83,9 @@ public class Neo4jFGFLoader {
 		private DynamicRelationshipType relationshipType;
 		private long verticesLoaded;
 		private long edgesLoaded;
+		private boolean hasAdditionalVertexLabel;
+		private boolean additionalVertexLabelIndexCreated;
+		private boolean originalVertexIdIndexCreated;
 		
 		
 		/**
@@ -81,12 +93,15 @@ public class Neo4jFGFLoader {
 		 * 
 		 * @param graph the graph
 		 * @param reader the input file reader
+		 * @param indexAllProperties whether to index all properties
 		 * @param listener the progress listener
 		 */
-		public Loader(BatchInserter graph, FGFReader reader, GraphProgressListener listener) {
+		public Loader(Neo4jBatchGraph graph, FGFReader reader, boolean indexAllProperties, GraphProgressListener listener) {
 			
 			this.graph = graph;
+			this.inserter = graph.getRawGraph();
 			this.reader = reader;
+			this.indexAllProperties = indexAllProperties;
 			this.listener = listener;
 			
 			this.vertices = new long[(int) this.reader.getNumberOfVertices()];
@@ -94,6 +109,33 @@ public class Neo4jFGFLoader {
 			this.relationshipType = null;
 			this.verticesLoaded = 0;
 			this.edgesLoaded = 0;
+			
+			this.hasAdditionalVertexLabel = false;
+			this.additionalVertexLabelIndexCreated = false;
+			this.originalVertexIdIndexCreated = false;
+		}
+		
+
+		/**
+		 * Callback for a property type
+		 * 
+		 * @param type the property type object
+		 */
+		@Override
+		public void propertyType(PropertyType type) {
+			type.setAux(new PropertyTypeAux());
+		}
+
+		
+		/**
+		 * Callback for starting a new vertex type
+		 * 
+		 * @param type the vertex type
+		 * @param count the number of vertices of the given type
+		 */
+		@Override
+		public void vertexTypeStart(String type, long count) {
+			// Nothing to do
 		}
 
 		
@@ -110,13 +152,15 @@ public class Neo4jFGFLoader {
 			tempMap.clear();
 			for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
 				tempMap.put(e.getKey().getName(), e.getValue());
+				((PropertyTypeAux) e.getKey().getAux()).vertexKeyUsed = true;
 			}
-			if (!tempMap.containsKey("type") && !"".equals(type)) {
-				tempMap.put("type", type);
+			if (!tempMap.containsKey(StringFactory.LABEL) && !"".equals(type)) {
+				tempMap.put(StringFactory.LABEL, type);
+				hasAdditionalVertexLabel = true;
 			}
-			tempMap.put("_original_id", id);
+			tempMap.put(FGFGraphLoader.KEY_ORIGINAL_ID, (int) id);
 			
-			long v = graph.createNode(tempMap);
+			long v = inserter.createNode(tempMap);
 			vertices[(int) id] = v;
 			verticesLoaded++;
 			
@@ -125,6 +169,37 @@ public class Neo4jFGFLoader {
 			}
 		}
 
+		
+		/**
+		 * Callback for starting the end of a vertex type
+		 * 
+		 * @param type the vertex type
+		 * @param count the number of vertices of the given type
+		 */
+		@Override
+		public void vertexTypeEnd(String type, long count) {
+			
+			if (!originalVertexIdIndexCreated) {
+				graph.createKeyIndex(FGFGraphLoader.KEY_ORIGINAL_ID, Vertex.class);
+				originalVertexIdIndexCreated = true;
+			}
+			
+			if (indexAllProperties && hasAdditionalVertexLabel && !additionalVertexLabelIndexCreated) {
+				graph.createKeyIndex(StringFactory.LABEL, Vertex.class);
+				additionalVertexLabelIndexCreated = true;
+			}
+			
+			if (indexAllProperties) {
+				for (PropertyType t : reader.getPropertyTypes()) {
+					PropertyTypeAux x = (PropertyTypeAux) t.getAux();
+					if (x.vertexKeyUsed && !x.vertexIndexCreated) {
+						graph.createKeyIndex(t.getName(), Vertex.class);
+						x.vertexIndexCreated = true;
+					}
+				}
+			}
+		}
+		
 		
 		/**
 		 * Callback for starting a new edge type
@@ -153,9 +228,10 @@ public class Neo4jFGFLoader {
 			tempMap.clear();
 			for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
 				tempMap.put(e.getKey().getName(), e.getValue());
+				((PropertyTypeAux) e.getKey().getAux()).edgeKeyUsed = true;
 			}
 			
-			graph.createRelationship(vertices[(int) tail], vertices[(int) head], relationshipType, tempMap);
+			inserter.createRelationship(vertices[(int) tail], vertices[(int) head], relationshipType, tempMap);
 			edgesLoaded++;
 			
 			if (listener != null && edgesLoaded % 10000 == 0) {
@@ -164,9 +240,43 @@ public class Neo4jFGFLoader {
 		}
 
 		
-		public void propertyType(PropertyType type) {}
-		public void vertexTypeStart(String type, long count) {}
-		public void vertexTypeEnd(String type, long count) {}
-		public void edgeTypeEnd(String type, long count) {}
+		/**
+		 * Callback for starting the end of an edge type
+		 * 
+		 * @param type the edge type
+		 * @param count the number of edges of the given type
+		 */
+		@Override
+		public void edgeTypeEnd(String type, long count) {
+			
+			if (indexAllProperties) {
+				for (PropertyType t : reader.getPropertyTypes()) {
+					PropertyTypeAux x = (PropertyTypeAux) t.getAux();
+					if (x.edgeKeyUsed && !x.edgeIndexCreated) {
+						graph.createKeyIndex(t.getName(), Edge.class);
+						x.edgeIndexCreated = true;
+					}
+				}
+			}
+		}
+		
+		
+		/**
+		 * Additional property information
+		 */
+		private static class PropertyTypeAux {
+			
+			public boolean vertexKeyUsed = false;
+			public boolean vertexIndexCreated = false;
+			public boolean edgeKeyUsed = false;
+			public boolean edgeIndexCreated = false;
+			
+			/**
+			 * Create an instance of type PropertyTypeAux
+			 */
+			public PropertyTypeAux() {
+				// Nothing to do
+			}
+		}
 	}
 }

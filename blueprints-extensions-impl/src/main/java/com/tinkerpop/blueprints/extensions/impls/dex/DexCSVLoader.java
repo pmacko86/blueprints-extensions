@@ -17,8 +17,10 @@ import com.sparsity.dex.io.NodeTypeLoader;
 import com.sparsity.dex.io.TypeLoaderEvent;
 import com.sparsity.dex.io.TypeLoaderListener;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGF2CSV;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
+import com.tinkerpop.blueprints.impls.dex.DexGraph;
 
 
 /**
@@ -38,21 +40,22 @@ public class DexCSVLoader {
 	 * @throws IOException on I/O or parse error
 	 */
 	public static void load(com.sparsity.dex.gdb.Graph graph, File dir, String prefix) throws IOException {
-		load(graph, dir, prefix, null);
+		load(graph, dir, prefix, false, null);
 	}
 	
 	
 	/**
-	 * Load from a directory of CSV files
+	 * Load from a directory of CSV files and optionally index all properties
 	 * 
 	 * @param graph the DEX graph
 	 * @param dir the directory with the input files
 	 * @param prefix the file name prefix
+	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 */
 	public static void load(com.sparsity.dex.gdb.Graph graph, File dir, String prefix,
-			GraphProgressListener listener) throws IOException {
+			boolean indexAllProperties, GraphProgressListener listener) throws IOException {
 		
 		if (dir.exists() && !dir.isDirectory()) {
 			throw new IOException("The specified directory is not a directory: " + dir.getName());
@@ -108,7 +111,7 @@ public class DexCSVLoader {
 			// Get the type name
 			
 			assert f.getName().startsWith(nodePrefix) &&  f.getName().endsWith(".csv");
-			String typeName = FGF2CSV.decodeFileNameFriendlyString(
+			String typeName = FGF2DexCSV.decodeFileNameFriendlyString(
 					f.getName().substring(nodePrefix.length(), f.getName().length() - 4));
 			
 			
@@ -116,15 +119,19 @@ public class DexCSVLoader {
 			
 			HashMap<String, Integer> csvAttributeToColumn = readAttributeToColumnMap(f);
 			
-			String metaFileName = nodePrefix + FGF2CSV.encodeToFileNameFriendlyString(typeName) + "-meta.csv";
+			String metaFileName = nodePrefix + FGF2DexCSV.encodeToFileNameFriendlyString(typeName) + "-meta.csv";
 			File metaFile = new File(f.getParentFile(), metaFileName);
 			HashMap<String, DataType> attributeTypes = readPropertyTypes(metaFile);
 			
-			attributeTypes.put("_original_id", DataType.Integer);
-			csvAttributeToColumn.put("_original_id", 0);
+			attributeTypes.put(FGFGraphLoader.KEY_ORIGINAL_ID, DataType.Integer);
+			csvAttributeToColumn.put(FGFGraphLoader.KEY_ORIGINAL_ID, 0);
 
 
 			// Create the new DEX type and its properties
+			
+			if ("".equals(typeName)) {
+				typeName = DexGraph.DEFAULT_DEX_VERTEX_LABEL;
+			}
 			
 			int type = graph.newNodeType(typeName);
 			
@@ -139,13 +146,14 @@ public class DexCSVLoader {
 					throw new IOException("The attribute " + s + " does not appear in the .csv header");
 				}
 				
-				int a = graph.newAttribute(type, s, attributeTypes.get(s), AttributeKind.Indexed);
+				boolean index = indexAllProperties || s.equals(FGFGraphLoader.KEY_ORIGINAL_ID);
+				int a = graph.newAttribute(type, s, attributeTypes.get(s), index ? AttributeKind.Indexed : AttributeKind.Basic);
 				attributeMap.put(s, a);
 				attributePositions.add(column);
 				attributes.add(a);
 			}
 			
-			nodeIdAttribute = attributeMap.get("_original_id");
+			nodeIdAttribute = attributeMap.get(FGFGraphLoader.KEY_ORIGINAL_ID);
 			
 			
 			// Create the CSV reader
@@ -182,7 +190,7 @@ public class DexCSVLoader {
 			// Get the type name
 			
 			assert f.getName().startsWith(edgePrefix) &&  f.getName().endsWith(".csv");
-			String typeName = FGF2CSV.decodeFileNameFriendlyString(
+			String typeName = FGF2DexCSV.decodeFileNameFriendlyString(
 					f.getName().substring(edgePrefix.length(), f.getName().length() - 4));
 			
 			
@@ -190,7 +198,7 @@ public class DexCSVLoader {
 			
 			HashMap<String, Integer> csvAttributeToColumn = readAttributeToColumnMap(f);
 			
-			String metaFileName = edgePrefix + FGF2CSV.encodeToFileNameFriendlyString(typeName) + "-meta.csv";
+			String metaFileName = edgePrefix + FGF2DexCSV.encodeToFileNameFriendlyString(typeName) + "-meta.csv";
 			File metaFile = new File(f.getParentFile(), metaFileName);
 			HashMap<String, DataType> attributeTypes = readPropertyTypes(metaFile);
 

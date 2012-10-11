@@ -17,7 +17,7 @@ import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public class FGF2CSV {
+public class FGF2DexCSV {
 
 	
 	/**

@@ -11,7 +11,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGF2CSV;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
@@ -40,7 +40,7 @@ public class FGFTool {
 		System.err.println("");
 		System.err.println("Tools:");
 		System.err.println("  dump          Dump a .fgf file");
-		System.err.println("  fgf2csv       Convert a .fgf file to a set of .csv files");
+		System.err.println("  fgf2dexcsv    Convert a .fgf file to a set of DEX .csv files");
 		System.err.println("  generate      Generate a graph and save it as .fgf");
 		System.err.println("  graphml2fgf   Convert a .graphml file to a .fgf file");
 		System.err.println("  help          Print this help");
@@ -82,10 +82,10 @@ public class FGFTool {
 	    	}
 	    	
 	    	
-	    	// Tool: fgf2csv
+	    	// Tool: fgf2dexcsv
 	    	
-	    	if ("fgf2csv".equals(tool)) {
-	    		System.exit(fgf2csv(tool, toolArgs));
+	    	if ("fgf2dexcsv".equals(tool)) {
+	    		System.exit(fgf2dexcsv(tool, toolArgs));
 	    	}
 	    	
 	    	
@@ -244,7 +244,7 @@ public class FGFTool {
 
     
     /**
-     * Tool: Convert a .fgf file to a set of .csv files
+     * Tool: Convert a .fgf file to a set of DEX .csv files
      * 
      * @param tool the tool name
      * @param args the command-line arguments
@@ -252,7 +252,7 @@ public class FGFTool {
      * @throws IOException on I/O error
      * @throws ClassNotFoundException on property unmarshalling error
      */
-    private static int fgf2csv(String tool, String[] args) throws IOException, ClassNotFoundException {
+    private static int fgf2dexcsv(String tool, String[] args) throws IOException, ClassNotFoundException {
     	
     	
     	// Parse the command-line options
@@ -329,7 +329,7 @@ public class FGFTool {
     	
     	
     	if (verbose) System.err.print("Converting:");
-    	FGF2CSV.convert(file, dir, prefix, verbose ? new GraphReaderProgressListener() : null);
+    	FGF2DexCSV.convert(file, dir, prefix, verbose ? new GraphReaderProgressListener() : null);
     	if (verbose) System.err.println();
 
     	return 0;
