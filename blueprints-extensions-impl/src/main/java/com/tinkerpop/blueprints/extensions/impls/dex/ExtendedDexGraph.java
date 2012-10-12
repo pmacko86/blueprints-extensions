@@ -21,9 +21,8 @@ import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
 
 
-
 /**
- * An extended neo4j graph with additional features
+ * An extended DEX graph with additional features
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
