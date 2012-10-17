@@ -16,4 +16,5 @@ syntax: glob
 *.swo
 *.swp
 target/**
+specs/*.fgf
 

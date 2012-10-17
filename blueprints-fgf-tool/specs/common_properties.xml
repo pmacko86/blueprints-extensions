@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+	<edges>
+		<properties>
+			<property name="time" type="integer">
+				<min>0</min>
+				<max>10000</max>
+				<distribution name="gaussian" />
+			</property>
+		</properties>
+	</edges>
+	<vertices>
+		<properties>
+			<property name="age" type="integer">
+				<min>18</min>
+				<max>65</max>
+				<distribution name="uniform" />
+			</property>
+		</properties>
+	</vertices>
+</included>
+
