@@ -17,4 +17,5 @@ syntax: glob
 *.swp
 target/**
 specs/*.fgf
+specs/*.fgf-dex-csvs/**
 
