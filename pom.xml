@@ -29,7 +29,8 @@
     <modules>
 		<module>blueprints-extensions-core</module>
 		<module>blueprints-extensions-impl</module>
-		<module>blueprints-bdb-graph</module>
+		<module>blueprints-fgf-tool</module>
+		<module>blueprints-extensions-impl</module>
 		<!--<module>blueprints-hollow-graph</module>-->
 		<module>blueprints-sql-graph</module>
     </modules>

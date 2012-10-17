@@ -9,11 +9,11 @@
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>blueprints-extensions-core</artifactId>
+    <artifactId>blueprints-fgf-tool</artifactId>
     <packaging>jar</packaging>
 	<url>http://eecs.harvard.edu/~syrah</url>
-    <name>Blueprints Extensions: Additional Interfaces and Utilities</name>
-    <description>Additional interfaces and utilities for Blueprints</description>
+    <name>Blueprints Extensions: The FGF Tool</name>
+    <description>A tool for reading, writing, and generating FGF files</description>
 	
 	<developers>
         <developer>
@@ -25,29 +25,20 @@
 	<inceptionYear>2012</inceptionYear>
 
     <dependencies>
-    
-        <!-- GENERAL -->
+        <dependency>
+            <groupId>com.tinkerpop.blueprints.extensions</groupId>
+            <artifactId>blueprints-extensions-core</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+		<dependency>
+			<groupId>net.sf.jopt-simple</groupId>
+			<artifactId>jopt-simple</artifactId>
+			<version>4.3</version>
+		</dependency>
 		<dependency>
 		   <groupId>commons-lang</groupId>
 		   <artifactId>commons-lang</artifactId>
 		   <version>2.5</version>
-		</dependency>
-		
-        <!-- BLUEPRINTS -->
-		<dependency>
-			<groupId>com.tinkerpop.blueprints</groupId>
-			<artifactId>blueprints-core</artifactId>
-			<version>2.1.0</version>
-		</dependency>
- 		<dependency>
-			<groupId>com.tinkerpop.blueprints</groupId>
-			<artifactId>blueprints-dex-graph</artifactId>
-			<version>2.1.0</version>
-		</dependency>
- 		<dependency>
-			<groupId>com.tinkerpop.blueprints</groupId>
-			<artifactId>blueprints-neo4jbatch-graph</artifactId>
-			<version>2.1.0</version>
 		</dependency>
     </dependencies>
 

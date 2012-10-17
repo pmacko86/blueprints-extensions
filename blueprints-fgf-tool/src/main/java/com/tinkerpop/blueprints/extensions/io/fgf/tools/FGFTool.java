@@ -14,6 +14,7 @@ import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
 import com.tinkerpop.blueprints.extensions.io.fgf.GraphML2FGF;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
@@ -476,7 +477,7 @@ public class FGFTool {
 				
 				@Override
 				public void propertyType(PropertyType type) {
-					System.out.println("Property " + type.getName() + " of type #" + type.getType());
+					System.out.println("Property " + type.getName() + " of type " + FGFTypes.toString(type.getType()));
 				}
 				
 				@Override

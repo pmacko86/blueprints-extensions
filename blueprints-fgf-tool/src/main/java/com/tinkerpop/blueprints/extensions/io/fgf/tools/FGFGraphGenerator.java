@@ -3,6 +3,8 @@ package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 import joptsimple.OptionParser;
@@ -33,11 +35,12 @@ public class FGFGraphGenerator {
 		System.err.println(FGFTool.PROGRAM_LONG_NAME);
 		System.err.println("");
 		System.err.println("Usage: " + FGFTool.PROGRAM_NAME + " generate [OPTIONS] MODEL MODEL_PARAMS...");
+		System.err.println("       " + FGFTool.PROGRAM_NAME + " generate [OPTIONS] SPEC_FILE_NAME");
 		System.err.println("");
 		System.err.println("Options:");
 		System.err.println("  --help               Print this help");
 		System.err.println("  --labels, -l L,L...  Specify edge labels (will be sampled uniformly)");
-		System.err.println("  --output, -o FILE    Specify the output file (required)");
+		System.err.println("  --output, -o FILE    Specify the output file");
 		System.err.println("  --verbose, -v        Verbose (print progress)");
 		System.err.println("");
 		System.err.println("Models:");
@@ -78,46 +81,11 @@ public class FGFGraphGenerator {
 		}
 		
 		
-		// Parse the command-line options: Options & help
+		// Parse the command-line options: Some Options & help
 		
 		if (options.has("help") || options.nonOptionArguments().isEmpty()) {
 			usage();
 			return options.has("help") ? 0 : 1;
-		}
-		
-		ArrayList<String> edgeLabels = new ArrayList<String>();
-		if (options.has("l") || options.has("labels")) {
-			
-			if (options.has("l")) {
-				for (Object a : options.valuesOf("l")) {
-					for (String s : a.toString().split("[, \t\n]")) {
-						if (!"".equals(s)) edgeLabels.add(s);
-						if ("<default>".equals(""));
-					}
-				}
-			}
-			
-			if (options.has("labels")) {
-				for (Object a : options.valuesOf("labels")) {
-					for (String s : a.toString().split("[, \t\n]")) {
-						if (!"".equals(s)) edgeLabels.add(s);
-						if ("<default>".equals(""));
-					}
-				}
-			}
-		}
-		
-		String outputFile;
-		if (options.has("o") || options.has("output")) {
-			outputFile = options.valueOf(options.has("o") ? "o" : "output").toString();
-	    	if (!outputFile.endsWith(".fgf")) {
-	    		System.err.println("Error: The output file needs to have the .fgf extension");
-	    		return 1;
-	    	}
-		}
-		else {
-			System.err.println("Error: The option -o/--output is required");
-			return 1;
 		}
 		
 		verbose = options.has("v") || options.has("verbose");
@@ -127,14 +95,27 @@ public class FGFGraphGenerator {
     	
 		ArrayList<String> modelArgs = new ArrayList<String>(options.nonOptionArguments());
 		String model = modelArgs.remove(0);
+		FGFGraphGeneratorSpecs specs = null;
+		boolean fromFile = false;
     	
 		try {
 	    	if ("barabasi".equals(model)) {
-	    		barabasi(modelArgs.toArray(new String[0]));
+	    		specs = createBarabasiSpecs(modelArgs.toArray(new String[0]));
 	    	}
 	    	else {
-	    		System.err.println("Error: Invalid graph model (please use --help for a list)");
-				return 1;
+	    		File f = new File(model);
+	    		if (f.exists() && f.isFile()) {
+	    			if (!modelArgs.isEmpty()) { 
+	    				System.err.println("Error: Too many arguments (please use --help for a list).");
+	    				return 1;
+	    			}
+	    			fromFile = true;
+	    			specs = FGFGraphGeneratorSpecs.loadFromXML(f);
+	    		}
+	    		else {
+	    			System.err.println("Error: Invalid graph model or a spec file (please use --help for a list).");
+	    			return 1;
+	    		}
 	    	}
 		}
 		catch (Exception e) {
@@ -144,38 +125,184 @@ public class FGFGraphGenerator {
 			}
 			throw e;
 		}
+    	
+    	assert specs != null;
+    	
+    	
+    	// Additional options for specs
 		
-		if (heads == null || tails == null || heads.length != tails.length) {
-			System.err.println("Error: Internal model generator error");
-			return 1;
+		String outputFile;
+		if (options.has("o") || options.has("output")) {
+			outputFile = options.valueOf(options.has("o") ? "o" : "output").toString();
+	    	if (!outputFile.endsWith(".fgf")) {
+	    		System.err.println("Error: The output file needs to have the .fgf extension.");
+	    		return 1;
+	    	}
+		}
+		else {
+			if (specs.getDefaultOutputFile() == null) {
+				System.err.println("Error: The option -o/--output is required, unless it is specified in the specs file.");
+				return 1;
+			}
+			else {
+				outputFile = specs.getDefaultOutputFile();
+		    	if (!outputFile.endsWith(".fgf")) {
+		    		System.err.println("Error: The output file needs to have the .fgf extension.");
+		    		return 1;
+		    	}
+			}
+		}
+		
+		if (options.has("l") || options.has("labels")) {
+			
+			if (fromFile) {
+    			System.err.println("Error: The option -l/--lavels is unsupported if the specs are loaded from a file.");
+    			return 1;
+			}
+			
+			if (options.has("l")) {
+				for (Object a : options.valuesOf("l")) {
+					for (String s : a.toString().split("[, \t\n]")) {
+						if (!"".equals(s)) specs.addEdgeLabel(s);
+						if ("<default>".equals(s)) specs.addEdgeLabel("");
+					}
+				}
+			}
+			
+			if (options.has("labels")) {
+				for (Object a : options.valuesOf("labels")) {
+					for (String s : a.toString().split("[, \t\n]")) {
+						if (!"".equals(s)) specs.addEdgeLabel(s);
+						if ("<default>".equals(s)) specs.addEdgeLabel("");
+					}
+				}
+			}
 		}
 		
 		
-		// Write & randomly assign types
+		// Generate
+
+		try {
+			generate(specs, new File(outputFile));
+		}
+		catch (Exception e) {
+			if (e.getMessage().startsWith("Error: ")) {
+				System.err.println(e.getMessage());
+				return 1;
+			}
+			throw e;
+		}
 		
-		Random random = new Random();
-		FGFWriter out = new FGFWriter(new File(outputFile));
+		return 0;
+    }
+    
+    
+    /**
+     * Create specs for the Barabasi model
+     * 
+     * @param args the model arguments
+     * @return the specs
+     */
+    private static FGFGraphGeneratorSpecs createBarabasiSpecs(String[] args) {
+    	
+    	if (args.length != 2) {
+    		throw new RuntimeException("Error: Invalid number of model arguments (please use --help for help).");
+    	}
+    	
+    	FGFGraphGeneratorSpecs specs = new FGFGraphGeneratorSpecs("barabasi");
+    	specs.setModelParameter("n", args[0]);
+    	specs.setModelParameter("m", args[1]);
+    	
+    	return specs; 
+    }
+    
+    
+    /**
+     * Generate the graph
+     * 
+     * @param specs the specs
+     * @param outputFile the output file
+     * @throws IOException on I/O error
+     */
+    private static void generate(FGFGraphGeneratorSpecs specs, File outputFile) throws IOException {
+    	
+    	assert specs.getModelName() != null;
+    	assert specs.getModelParameters() != null;
+    	
+   	
+    	//
+    	// Generate the topology
+    	//
+    	
+    	if ("barabasi".equalsIgnoreCase(specs.getModelName())) {
+    		barabasi(specs);
+    	}
+    	else {
+    		throw new IllegalArgumentException("Unknown model " + specs.getModelName());
+    	}
+    	
+    	
+    	// Check that the graph was generated + sanity checks
+		
+		if (heads == null || tails == null || heads.length != tails.length) {
+			throw new IllegalStateException("Error: Internal model generator error.");
+		}
+		
+		
+		//
+		// Write & randomly assign properties + edge labels
+		//
+		
+		FGFWriter out = new FGFWriter(outputFile);
 		
 		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
 		if (verbose) System.err.print("Writing   :");
 		
+		List<String> edgeLabels = specs.getEdgeLabels();
+		FGFGraphGeneratorSpecs.Distribution edgeLabelsDistribution = specs.getEdgeLabelsDistribution();
+		List<FGFGraphGeneratorSpecs.Property> edgeProperties = specs.getEdgeProperties(); 
+		List<FGFGraphGeneratorSpecs.Property> vertexProperties = specs.getVertexProperties(); 
+		
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		
+		// Vertices
+		
 		for (long i = 0; i < vertices; i++) {
 			
-			long _i = out.writeVertex("", null);
+			properties.clear();
+			for (FGFGraphGeneratorSpecs.Property p : vertexProperties) {
+				properties.put(p.getName(), p.generateValue());
+			}
+			
+			long _i = out.writeVertex("", properties);
 			assert i == _i;
 			
 			if (verbose && i % 100000 == 0) l.graphProgress((int) i, (int) 0);
 		}
 		
+		
+		// Edges
+		
 		for (long i = 0; i < heads.length; i++) {
 			
 			String type = "";
-			if (!edgeLabels.isEmpty()) type = edgeLabels.get(random.nextInt(edgeLabels.size())); 
+			if (!edgeLabels.isEmpty()) {
+				type = edgeLabels.get(edgeLabelsDistribution.randomInt(edgeLabels.size())); 
+			}
 			
-			out.writeEdge(heads[(int) i], tails[(int) i], type, null);
+			properties.clear();
+			for (FGFGraphGeneratorSpecs.Property p : edgeProperties) {
+				properties.put(p.getName(), p.generateValue());
+			}
+			
+			out.writeEdge(heads[(int) i], tails[(int) i], type, properties);
 			
 			if (verbose && i % 100000 == 0) l.graphProgress((int) vertices, (int) i);
 		}
+		
+		
+		// Finalize
 		
 		if (verbose) l.graphProgress((int) vertices, (int) heads.length);
 		if (verbose) System.err.println();
@@ -183,29 +310,33 @@ public class FGFGraphGenerator {
 		if (verbose) System.err.print("Finalizing: ");
 		out.close();
 		if (verbose) System.err.println("done");
-
-    	return 0;
     }
-    
+
     
     /**
      * Barabasi graph generator
      * 
-     * @param args the model arguments
+     * @param specs the generator specs
      */
-    private static void barabasi(String[] args) {
+    private static void barabasi(FGFGraphGeneratorSpecs specs) {
     	
-    	Random random = new Random();
-    	
+       	assert specs.getModelName().equalsIgnoreCase("barabasi");
+       	
     	
     	// Get the arguments
     	
-    	if (args.length != 2) {
-    		throw new RuntimeException("Error: Invalid number of model arguments (please use --help for help)");
+    	if (specs.getModelParameters().size() != 2) {
+    		throw new RuntimeException("Error: Invalid number of model arguments (please use --help for help).");
     	}
     	
-    	long n = Long.parseLong(args[0]);
-    	long m = Long.parseLong(args[1]);
+    	String s_n = specs.getModelParameters().get("n");
+    	String s_m = specs.getModelParameters().get("m");
+    	if (s_n == null || s_m == null) {
+    		throw new RuntimeException("Error: Both n and m need to be specified.");
+    	}
+    	
+    	long n = Long.parseLong(s_n);
+    	long m = Long.parseLong(s_m);
     	int zeroAppeal = 8;
     	
     	if (n < 1) throw new RuntimeException("Error: n < 1");
@@ -216,8 +347,9 @@ public class FGFGraphGenerator {
     	}
     	
     	
-    	// Initialize
-		
+    	// Initialize	
+       	
+       	Random random = new Random();
 		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
    	
 		try {
