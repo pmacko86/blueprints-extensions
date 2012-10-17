@@ -11,6 +11,10 @@
 	</edges>
 	<vertices>
 		<properties>
+			<property name="name" type="string">
+				<file>names.txt</file>
+				<distribution name="uniform" />
+			</property>
 			<property name="age" type="integer">
 				<min>18</min>
 				<max>65</max>

@@ -1,9 +1,11 @@
 package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -168,17 +170,20 @@ public class FGFGraphGeneratorSpecs {
 	 * 
 	 * @param file the input file
 	 * @return the loaded specs
-	 * @throws XMLStreamException on an XML stream error
-	 * @throws FileNotFoundException if the file is not found
+	 * @throws IOException on I/O error
 	 */
-	public static FGFGraphGeneratorSpecs loadFromXML(File file) throws FileNotFoundException, XMLStreamException {
+	public static FGFGraphGeneratorSpecs loadFromXML(File file) throws IOException {
 		
 		FGFGraphGeneratorSpecs out = new FGFGraphGeneratorSpecs();
 		
-		XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-		XMLStreamReader reader = inputFactory.createXMLStreamReader(new BufferedInputStream(new FileInputStream(file)));
-		
-		loadRootFromXML(reader, file, out);
+		try {
+			XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+			XMLStreamReader reader = inputFactory.createXMLStreamReader(new BufferedInputStream(new FileInputStream(file)));
+			loadRootFromXML(reader, file, out);
+		}
+		catch (XMLStreamException e) {
+			throw new IOException(e);
+		}
 		
 		if (out.modelName == null) {
 			throw new RuntimeException("The model is not specified.");
@@ -195,10 +200,10 @@ public class FGFGraphGeneratorSpecs {
 	 * @param file the input file
 	 * @param out the specs
 	 * @throws XMLStreamException on an XML stream error
-	 * @throws FileNotFoundException if the file is not found
+	 * @throws IOException on I/O error
 	 */
 	private static void loadRootFromXML(XMLStreamReader reader, File file, FGFGraphGeneratorSpecs out)
-		throws XMLStreamException, FileNotFoundException {
+		throws XMLStreamException, IOException {
 		
 		while (reader.hasNext()) {
 			Integer eventType = reader.next();
@@ -223,17 +228,17 @@ public class FGFGraphGeneratorSpecs {
 				}
 
 				if (elementName.equals(XML_MODEL)) {
-					loadModelFromXML(reader, out);
+					loadModelFromXML(reader, file, out);
 					continue;
 				}
 
 				if (elementName.equals(XML_EDGES)) {
-					loadEdgeSpecsFromXML(reader, out);
+					loadEdgeSpecsFromXML(reader, file, out);
 					continue;
 				}
 
 				if (elementName.equals(XML_VERTICES)) {
-					loadVertexSpecsFromXML(reader, out);
+					loadVertexSpecsFromXML(reader, file, out);
 					continue;
 				}
 
@@ -271,10 +276,11 @@ public class FGFGraphGeneratorSpecs {
 	 * Read model information from the XML
 	 * 
 	 * @param reader the reader
+	 * @param file the input file
 	 * @param out the specs
 	 * @throws XMLStreamException on an XML stream error
 	 */
-	private static void loadModelFromXML(XMLStreamReader reader, FGFGraphGeneratorSpecs out) throws XMLStreamException {
+	private static void loadModelFromXML(XMLStreamReader reader, File file, FGFGraphGeneratorSpecs out) throws XMLStreamException {
 		
 		assert reader.getName().getLocalPart().equals(XML_MODEL);
 		
@@ -314,10 +320,13 @@ public class FGFGraphGeneratorSpecs {
 	 * Read edge specs from the XML
 	 * 
 	 * @param reader the reader
+	 * @param file the input file
 	 * @param out the specs
 	 * @throws XMLStreamException on an XML stream error
+	 * @throws IOException on I/O error
 	 */
-	private static void loadEdgeSpecsFromXML(XMLStreamReader reader, FGFGraphGeneratorSpecs out) throws XMLStreamException {
+	private static void loadEdgeSpecsFromXML(XMLStreamReader reader, File file, FGFGraphGeneratorSpecs out)
+			throws XMLStreamException, IOException {
 		
 		assert reader.getName().getLocalPart().equals(XML_EDGES);
 		
@@ -333,12 +342,12 @@ public class FGFGraphGeneratorSpecs {
 				String elementName = reader.getName().getLocalPart();
 				
 				if (elementName.equals(XML_EDGES_LABELS)) {
-					loadEdgeLabelsFromXML(reader, out);
+					loadEdgeLabelsFromXML(reader, file, out);
 					continue;
 				}
 				
 				if (elementName.equals(XML_PROPERTIES)) {
-					loadPropertiesFromXML(reader, out.edgeProperties);
+					loadPropertiesFromXML(reader, file, out.edgeProperties);
 					continue;
 				}
 
@@ -362,10 +371,12 @@ public class FGFGraphGeneratorSpecs {
 	 * Read edge labels from the XML
 	 * 
 	 * @param reader the reader
+	 * @param file the input file
 	 * @param out the specs
 	 * @throws XMLStreamException on an XML stream error
 	 */
-	private static void loadEdgeLabelsFromXML(XMLStreamReader reader, FGFGraphGeneratorSpecs out) throws XMLStreamException {
+	private static void loadEdgeLabelsFromXML(XMLStreamReader reader, File file, FGFGraphGeneratorSpecs out)
+			throws XMLStreamException {
 		
 		assert reader.getName().getLocalPart().equals(XML_EDGES_LABELS);
 		boolean edgeLabelsDistributionAlreadySpecified = false;
@@ -389,7 +400,7 @@ public class FGFGraphGeneratorSpecs {
 				
 				if (elementName.equals(XML_DISTRIBUTION)) {
 					if (edgeLabelsDistributionAlreadySpecified) {
-						throw new RuntimeException("Cannot specify more than one edge labels distribution.");
+						throw new RuntimeException("Cannot specify more than one distribution of edge labels.");
 					}
 					edgeLabelsDistributionAlreadySpecified = true;
 					out.edgeLabelsDistribution = loadDistributionFromXML(reader);
@@ -416,10 +427,13 @@ public class FGFGraphGeneratorSpecs {
 	 * Read vertex specs from the XML
 	 * 
 	 * @param reader the reader
+	 * @param file the input file
 	 * @param out the specs
 	 * @throws XMLStreamException on an XML stream error
+	 * @throws IOException on I/O error
 	 */
-	private static void loadVertexSpecsFromXML(XMLStreamReader reader, FGFGraphGeneratorSpecs out) throws XMLStreamException {
+	private static void loadVertexSpecsFromXML(XMLStreamReader reader, File file, FGFGraphGeneratorSpecs out)
+			throws XMLStreamException, IOException {
 		
 		assert reader.getName().getLocalPart().equals(XML_VERTICES);
 		
@@ -435,7 +449,7 @@ public class FGFGraphGeneratorSpecs {
 				String elementName = reader.getName().getLocalPart();
 				
 				if (elementName.equals(XML_PROPERTIES)) {
-					loadPropertiesFromXML(reader, out.vertexProperties);
+					loadPropertiesFromXML(reader, file, out.vertexProperties);
 					continue;
 				}
 				
@@ -459,10 +473,13 @@ public class FGFGraphGeneratorSpecs {
 	 * Read edge or vertex properties from the XML
 	 * 
 	 * @param reader the reader
+	 * @param file the input file
 	 * @param out the list of properties
 	 * @throws XMLStreamException on an XML stream error
+	 * @throws IOException on I/O error
 	 */
-	private static void loadPropertiesFromXML(XMLStreamReader reader, List<Property> out) throws XMLStreamException {
+	private static void loadPropertiesFromXML(XMLStreamReader reader, File file, List<Property> out)
+			throws XMLStreamException, IOException {
 		
 		assert reader.getName().getLocalPart().equals(XML_PROPERTIES);
 		
@@ -537,10 +554,49 @@ public class FGFGraphGeneratorSpecs {
 							p_distribution = new Distribution.Uniform();
 						}
 						
+						String s_min, s_max, l;
+						List<String> strings = null;
+						
 						switch (p_type) {
+						case FGFTypes.STRING:
+							String s_f = p_parameters.remove("file");
+							if (s_f != null) {
+								File f = s_f.startsWith("/") ? new File(s_f) : new File(file.getParentFile(), s_f);
+								BufferedReader r = new BufferedReader(new InputStreamReader(new BufferedInputStream(new FileInputStream(f))));
+								strings = new ArrayList<String>();
+								while ((l = r.readLine()) != null) strings.add(l);
+							}
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A string property tag has too many parameters.");
+							}
+							if (strings == null) {
+								throw new RuntimeException("The list of strings is undefined.");
+							}
+							if (strings.isEmpty()) {
+								throw new RuntimeException("The list of strings is empty.");
+							}
+							p = new Property.String(p_name, p_distribution, strings);
+							break;
+						case FGFTypes.BOOLEAN:
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A boolean property tag has too many parameters.");
+							}
+							p = new Property.Boolean(p_name, p_distribution);
+							break;
+						case FGFTypes.SHORT:
+							s_min = p_parameters.remove("min");
+							s_max = p_parameters.remove("max");
+							if (s_min == null || s_max == null) {
+								throw new RuntimeException("A short property must have a min and a max.");
+							}
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A short property tag has too many parameters.");
+							}
+							p = new Property.Short(p_name, p_distribution, Short.parseShort(s_min), Short.parseShort(s_max));
+							break;
 						case FGFTypes.INTEGER:
-							String s_min = p_parameters.remove("min");
-							String s_max = p_parameters.remove("max");
+							s_min = p_parameters.remove("min");
+							s_max = p_parameters.remove("max");
 							if (s_min == null || s_max == null) {
 								throw new RuntimeException("An integer property must have a min and a max.");
 							}
@@ -548,6 +604,39 @@ public class FGFGraphGeneratorSpecs {
 								throw new RuntimeException("An integer property tag has too many parameters.");
 							}
 							p = new Property.Integer(p_name, p_distribution, Integer.parseInt(s_min), Integer.parseInt(s_max));
+							break;
+						case FGFTypes.LONG:
+							s_min = p_parameters.remove("min");
+							s_max = p_parameters.remove("max");
+							if (s_min == null || s_max == null) {
+								throw new RuntimeException("A long property must have a min and a max.");
+							}
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A long property tag has too many parameters.");
+							}
+							p = new Property.Long(p_name, p_distribution, Long.parseLong(s_min), Long.parseLong(s_max));
+							break;
+						case FGFTypes.FLOAT:
+							s_min = p_parameters.remove("min");
+							s_max = p_parameters.remove("max");
+							if (s_min == null || s_max == null) {
+								throw new RuntimeException("A float property must have a min and a max.");
+							}
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A float property tag has too many parameters.");
+							}
+							p = new Property.Float(p_name, p_distribution, Float.parseFloat(s_min), Float.parseFloat(s_max));
+							break;
+						case FGFTypes.DOUBLE:
+							s_min = p_parameters.remove("min");
+							s_max = p_parameters.remove("max");
+							if (s_min == null || s_max == null) {
+								throw new RuntimeException("A double property must have a min and a max.");
+							}
+							if (!p_parameters.isEmpty()) {
+								throw new RuntimeException("A double property tag has too many parameters.");
+							}
+							p = new Property.Double(p_name, p_distribution, Double.parseDouble(s_min), Double.parseDouble(s_max));
 							break;
 						default:
 							throw new RuntimeException("Unsupported property type: " + FGFTypes.toString(p_type));
@@ -641,7 +730,7 @@ public class FGFGraphGeneratorSpecs {
 	 */
 	public static abstract class Property {
 		
-		private String name;
+		private java.lang.String name;
 		private short type;
 		private Distribution distribution;
 		
@@ -653,7 +742,7 @@ public class FGFGraphGeneratorSpecs {
 		 * @param type the property type
 			 * @param distribution the probabilistic distribution
 		 */
-		public Property(String name, short type, Distribution distribution) {
+		public Property(java.lang.String name, short type, Distribution distribution) {
 			this.name = name;
 			this.type = type;
 			this.distribution = distribution;
@@ -665,7 +754,7 @@ public class FGFGraphGeneratorSpecs {
 		 * 
 		 * @return the property name
 		 */
-		public String getName() {
+		public java.lang.String getName() {
 			return name;
 		}
 		
@@ -710,6 +799,112 @@ public class FGFGraphGeneratorSpecs {
 		
 		
 		/**
+		 * A string property
+		 */
+		public static class String extends Property {
+			
+			private List<java.lang.String> strings;
+			
+				
+			/**
+			 * Create an instance of class Property.String
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param strings the strings to choose from
+			 */
+			public String(java.lang.String name, Distribution distribution, List<java.lang.String> strings) {
+				super(name, FGFTypes.STRING, distribution);
+				this.strings = strings;
+				if (strings == null || strings.isEmpty()) {
+					throw new IllegalArgumentException("The strings array cannot be null or empty");
+				}
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return strings.get((int) (r * strings.size()));
+			}
+		}
+		
+		
+		/**
+		 * A boolean property
+		 */
+		public static class Boolean extends Property {
+			
+				
+			/**
+			 * Create an instance of class Property.Boolean
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param min the minimum value
+			 * @param max the maximum value
+			 */
+			public Boolean(java.lang.String name, Distribution distribution) {
+				super(name, FGFTypes.BOOLEAN, distribution);
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return r >= 0.5;
+			}
+		}
+		
+		
+		/**
+		 * A short property
+		 */
+		public static class Short extends Property {
+			
+			private short min;
+			private short max;
+			
+				
+			/**
+			 * Create an instance of class Property.Short
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param min the minimum value
+			 * @param max the maximum value
+			 */
+			public Short(java.lang.String name, Distribution distribution, short min, short max) {
+				super(name, FGFTypes.SHORT, distribution);
+				this.min = min;
+				this.max = max;
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return min + (short)(r * (max - min + 1));
+			}
+		}
+		
+		
+		/**
 		 * An integer property
 		 */
 		public static class Integer extends Property {
@@ -726,7 +921,7 @@ public class FGFGraphGeneratorSpecs {
 			 * @param min the minimum value
 			 * @param max the maximum value
 			 */
-			public Integer(String name, Distribution distribution, int min, int max) {
+			public Integer(java.lang.String name, Distribution distribution, int min, int max) {
 				super(name, FGFTypes.INTEGER, distribution);
 				this.min = min;
 				this.max = max;
@@ -742,6 +937,117 @@ public class FGFGraphGeneratorSpecs {
 			@Override
 			public Object generateValue(double r) {
 				return min + (int)(r * (max - min + 1));
+			}
+		}
+		
+		
+		/**
+		 * A long property
+		 */
+		public static class Long extends Property {
+			
+			private long min;
+			private long max;
+			
+				
+			/**
+			 * Create an instance of class Property.Long
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param min the minimum value
+			 * @param max the maximum value
+			 */
+			public Long(java.lang.String name, Distribution distribution, long min, long max) {
+				super(name, FGFTypes.LONG, distribution);
+				this.min = min;
+				this.max = max;
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return min + (long)(r * (max - min + 1));
+			}
+		}
+		
+		
+		/**
+		 * A float property
+		 */
+		public static class Float extends Property {
+			
+			private float min;
+			private float max;
+			
+				
+			/**
+			 * Create an instance of class Property.Float
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param min the minimum value
+			 * @param max the maximum value
+			 */
+			public Float(java.lang.String name, Distribution distribution, float min, float max) {
+				super(name, FGFTypes.LONG, distribution);
+				this.min = min;
+				this.max = max;
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return min + (float)(r * (max - min + 1));
+			}
+		}
+		
+		
+		/**
+		 * A double property
+		 */
+		public static class Double extends Property {
+			
+			private double min;
+			private double max;
+			
+				
+			/**
+			 * Create an instance of class Property.Double
+			 * 
+			 * @param name the property name
+			 * @param distribution the probabilistic distribution
+			 * @param min the minimum value
+			 * @param max the maximum value
+			 */
+			public Double(java.lang.String name, Distribution distribution, double min, double max) {
+				super(name, FGFTypes.LONG, distribution);
+				this.min = min;
+				this.max = max;
+			}
+			
+			
+			/**
+			 * Generate a value
+			 * 
+			 * @param r a random number between 0 and 1
+			 * @return a generated value
+			 */
+			@Override
+			public Object generateValue(double r) {
+				return min + (double)(r * (max - min + 1));
 			}
 		}
 	}
