@@ -110,4 +110,9 @@ public class BdbGraphTest extends GraphTest {
         }
         return directory;
     }
+
+	//@Override
+	public Graph generateGraph(String graphDirectoryName) {
+		return new BdbGraph(graphDirectoryName);
+	}
 }

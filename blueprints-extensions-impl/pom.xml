@@ -32,16 +32,6 @@
             <artifactId>blueprints-extensions-core</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-		<dependency>
-			<groupId>com.tinkerpop.blueprints</groupId>
-			<artifactId>blueprints-dex-graph</artifactId>
-			<version>2.1.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.tinkerpop.blueprints</groupId>
-			<artifactId>blueprints-neo4j-graph</artifactId>
-			<version>2.1.0</version>
-		</dependency>
     </dependencies>
     
     <repositories>

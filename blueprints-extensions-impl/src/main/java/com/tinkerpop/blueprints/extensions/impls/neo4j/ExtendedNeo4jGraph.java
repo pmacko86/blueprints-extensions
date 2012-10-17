@@ -1,23 +1,31 @@
 package com.tinkerpop.blueprints.extensions.impls.neo4j;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.HighlyAvailableGraphDatabase;
 import org.neo4j.kernel.impl.cache.CacheProvider;
 import org.neo4j.kernel.impl.core.NodeManager;
 
 import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
 import com.tinkerpop.blueprints.impls.neo4j.Neo4jEdge;
 import com.tinkerpop.blueprints.impls.neo4j.Neo4jGraph;
 import com.tinkerpop.blueprints.impls.neo4j.Neo4jVertex;
+import com.tinkerpop.blueprints.util.ExceptionFactory;
+import com.tinkerpop.blueprints.util.KeyIndexableGraphHelper;
 
 
 /**
@@ -187,5 +195,56 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
     @Override
     public int getBufferPoolSize() {
     	throw new UnsupportedOperationException();
+    }
+
+
+    @Override
+    public <T extends Element> void createKeyIndex(final String key, final Class<T> elementClass) {
+
+    	// Hack: a fixed version from the original Blueprints implementation, except without at least one of its bugs
+
+    	this.autoStartTransaction();
+    	GraphDatabaseService g = getRawGraph();
+    	if (Vertex.class.isAssignableFrom(elementClass)) {
+    		if (!g.index().getNodeAutoIndexer().isEnabled())
+    			g.index().getNodeAutoIndexer().setEnabled(true);
+
+    		g.index().getNodeAutoIndexer().startAutoIndexingProperty(key);
+    		if (!this.getInternalIndexKeys(Vertex.class).contains(key)) {
+    			KeyIndexableGraphHelper.reIndexElements(this, this.getVertices(), new HashSet<String>(Arrays.asList(key)));
+    			this.createInternalIndexKey(key, elementClass);
+    		}
+    	} else if (Edge.class.isAssignableFrom(elementClass)) {
+    		if (!g.index().getRelationshipAutoIndexer().isEnabled())
+    			g.index().getRelationshipAutoIndexer().setEnabled(true);
+
+    		g.index().getRelationshipAutoIndexer().startAutoIndexingProperty(key);
+    		if (!this.getInternalIndexKeys(Edge.class).contains(key)) {
+    			KeyIndexableGraphHelper.reIndexElements(this, this.getEdges(), new HashSet<String>(Arrays.asList(key)));
+    			this.createInternalIndexKey(key, elementClass);
+    		}
+    	} else {
+    		throw ExceptionFactory.classIsNotIndexable(elementClass);
+    	}
+    }
+
+    
+    private <T extends Element> void createInternalIndexKey(final String key, final Class<T> elementClass) {
+
+    	// Hack: a fixed version from the original Blueprints implementation, except without at least one of its bugs
+
+    	final String propertyName = elementClass.getSimpleName() + ":indexed_keys";
+    	@SuppressWarnings("deprecation")
+    	final PropertyContainer pc = ((GraphDatabaseAPI) getRawGraph()).getKernelData().properties();
+    	this.autoStartTransaction();
+    	try {
+    		final String[] keys = (String[]) pc.getProperty(propertyName);
+    		final Set<String> temp = new HashSet<String>(Arrays.asList(keys));
+    		temp.add(key);
+    		pc.setProperty(propertyName, temp.toArray(new String[temp.size()]));
+    	} catch (Exception e) {
+    		// no indexed_keys kernel data property
+    		pc.setProperty(propertyName, new String[]{key});
+    	}
     }
 }

@@ -14,6 +14,10 @@
 	<url>http://eecs.harvard.edu/~syrah</url>
     <name>Blueprints Extensions: Additional Interfaces and Utilities</name>
     <description>Additional interfaces and utilities for Blueprints</description>
+    
+    <properties>
+    	<blueprintsVersion>2.2.0-SNAPSHOT</blueprintsVersion>
+    </properties>
 	
 	<developers>
         <developer>
@@ -37,17 +41,27 @@
 		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-core</artifactId>
-			<version>2.1.0</version>
+			<version>${blueprintsVersion}</version>
 		</dependency>
+        <dependency>
+            <groupId>com.tinkerpop.blueprints</groupId>
+            <artifactId>blueprints-test</artifactId>
+            <version>${blueprintsVersion}</version>
+        </dependency>
  		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-dex-graph</artifactId>
-			<version>2.1.0</version>
+			<version>${blueprintsVersion}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.tinkerpop.blueprints</groupId>
+			<artifactId>blueprints-neo4j-graph</artifactId>
+			<version>${blueprintsVersion}</version>
 		</dependency>
  		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-neo4jbatch-graph</artifactId>
-			<version>2.1.0</version>
+			<version>${blueprintsVersion}</version>
 		</dependency>
     </dependencies>
 

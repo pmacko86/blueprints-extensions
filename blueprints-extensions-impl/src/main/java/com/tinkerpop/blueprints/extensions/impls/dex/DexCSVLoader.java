@@ -218,7 +218,8 @@ public class DexCSVLoader {
 					throw new IOException("The attribute " + s + " does not appear in the .csv header");
 				}
 				
-				int a = graph.newAttribute(type, s, attributeTypes.get(s), AttributeKind.Indexed);
+				boolean index = indexAllProperties;
+				int a = graph.newAttribute(type, s, attributeTypes.get(s), index ? AttributeKind.Indexed : AttributeKind.Basic);
 				attributeMap.put(s, a);
 				attributePositions.add(column);
 				attributes.add(a);

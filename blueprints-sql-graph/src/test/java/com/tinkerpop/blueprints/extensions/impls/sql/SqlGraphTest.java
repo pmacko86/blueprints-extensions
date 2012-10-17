@@ -125,4 +125,10 @@ public class SqlGraphTest extends GraphTest {
 		// Blueprints 1.1.0 --> Blueprints 2.1.0 migration hack
 		return getGraphInstance();
 	}
+
+	//@Override
+	public Graph generateGraph(String graphDirectoryName) {
+		// A hack
+		return getGraphInstance();
+	}
 }
