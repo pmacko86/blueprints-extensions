@@ -303,7 +303,7 @@ public class FGFTool {
 		// Parse the command-line options: Non-optional arguments
     	
     	String inputFile = l.get(0);
-    	String outputDir = l.size() > 1 ? l.get(1) : ".";
+    	String outputDir = l.size() > 1 ? l.get(1) : null;
     	
     	if (!inputFile.endsWith(".fgf")) {
     		System.err.println("Error: The input file needs to have the .fgf extension");
@@ -311,7 +311,7 @@ public class FGFTool {
     	}
     	
     	File file = new File(inputFile);
-    	File dir  = new File(outputDir);
+    	File dir  = outputDir != null ? new File(outputDir) : new File(file.getParentFile(), file.getName() + "-dex-csvs");
     	
     	if (dir.exists() && !dir.isDirectory()) {
     		System.err.println("Error: The output directory is not a directory -- " + outputDir);
