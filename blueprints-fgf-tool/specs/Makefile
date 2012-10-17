@@ -2,7 +2,7 @@
 # Makefile to manage the graph generation
 #
 
-TARGETS := $(subst .xml,.fgf-dex-csvs,$(shell ls -1 *.xml | grep -v common))
+TARGETS := $(subst .xml,.fgf,$(shell ls -1 *.xml | grep -v common))
 FGFTOOL := ../fgftool.sh
 
 all: $(TARGETS)
