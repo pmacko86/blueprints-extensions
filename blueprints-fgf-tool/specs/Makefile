@@ -14,5 +14,5 @@ clean:
 
 %.fgf: %.xml common*.xml names.txt
 	$(FGFTOOL) generate -v -o $@ $<
-	$(FGFTOOL) fgf2dexcsv -v $<
+	$(FGFTOOL) fgf2dexcsv -v $@
 
