@@ -5,5 +5,7 @@ used for graph generation.
 names.txt:
 	A collection of many random names, one per each line. Generated using
 	../tools/combine.py using the given name and family name data sets
-	downloaded from: http://www.outpost9.com/files/WordLists.html
+	from the US Census Bureau downloaded from the following webpages:
+		http://www.ssa.gov/oact/babynames/limits.html
+		http://names.mongabay.com/most_common_surnames1.htm
 
