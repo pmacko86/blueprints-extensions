@@ -37,6 +37,11 @@
 set -e
 PROGRAM="`basename $0`"
 
+PROGRAM_DIR="`dirname $0`"
+if [ "x$PROGRAM_DIR" = "x" ]; then
+	PROGRAM_DIR="."
+fi
+
 
 #
 # Options
@@ -199,6 +204,7 @@ if [ "x$MAVEN_TARGET" == "xexec:java" ]; then
 fi
 
 MAVEN_OPTS="$MAVEN_OPTS" \
-	mvn $MAVEN_OUTPUT_LEVEL_OPTS $MAVEN_CMD_OPTS $MAVEN_TARGET $MAVEN_D_OPTS \
-		-Dexec.args="$*"
+	mvn -f $PROGRAM_DIR/pom.xml $MAVEN_OUTPUT_LEVEL_OPTS $MAVEN_CMD_OPTS \
+		$MAVEN_TARGET $MAVEN_D_OPTS \
+			-Dexec.args="$*"
 
