@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graph-specs output="barabasi_100k_500k_2el.fgf">
+	<model name="barabasi">
+		<n>100000</n>
+		<m>5</m>
+	</model>
+	<edges>
+		<labels>
+			<label>friend</label>
+			<label>family</label>
+		</labels>
+	</edges>
+	<include file="common_properties.xml" />
+</graph-specs>
+
