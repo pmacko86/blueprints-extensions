@@ -121,7 +121,7 @@ public class DexUtils {
 		int[] types = null;
 		
 		if (label == null) {
-			types = getEdgeTypes(graph, label);
+			types = getEdgeTypes(graph);
 		}
 		else {
 			types = new int[1];
