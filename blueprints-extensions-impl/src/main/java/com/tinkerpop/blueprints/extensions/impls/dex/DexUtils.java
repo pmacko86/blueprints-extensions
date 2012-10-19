@@ -1,7 +1,9 @@
 package com.tinkerpop.blueprints.extensions.impls.dex;
 
+import com.sparsity.dex.gdb.Attribute;
 import com.sparsity.dex.gdb.EdgesDirection;
 import com.sparsity.dex.gdb.Graph;
+import com.sparsity.dex.gdb.Objects;
 import com.tinkerpop.blueprints.Direction;
 
 
@@ -130,4 +132,48 @@ public class DexUtils {
 		
 		return types;
 	}
+	
+	
+	/**
+	 * Get objects using an index
+	 * 
+	 * @param graph the DEX {@link Graph}
+	 * @param adata the attribute data
+	 * @param value the attribute value
+	 * @return an iterable object (must be closed by the caller)
+	 */
+	public static Objects getUsingIndex(final Graph graph, final Attribute adata, final Object value) {
+    	
+    	// https://github.com/tinkerpop/blueprints/blob/master/...
+    	//           blueprints-dex-graph/src/main/java/com/tinkerpop/blueprints/impls/...
+    	//           dex/DexGraph.java
+        
+    	com.sparsity.dex.gdb.Value v = new com.sparsity.dex.gdb.Value();
+        
+    	switch (adata.getDataType()) {
+            case Boolean:
+                v.setBooleanVoid((Boolean) value);
+                break;
+            case Integer:
+                v.setIntegerVoid((Integer) value);
+                break;
+            case Long:
+                v.setLongVoid((Long) value);
+                break;
+            case String:
+                v.setStringVoid((String) value);
+                break;
+            case Double:
+                if (value instanceof Double) {
+                    v.setDoubleVoid((Double) value);
+                } else if (value instanceof Float) {
+                    v.setDoubleVoid(((Float) value).doubleValue());
+                }
+                break;
+            default:
+                throw new UnsupportedOperationException();
+        }
+        
+        return graph.select(adata.getId(), com.sparsity.dex.gdb.Condition.Equal, v);
+    }
 }
