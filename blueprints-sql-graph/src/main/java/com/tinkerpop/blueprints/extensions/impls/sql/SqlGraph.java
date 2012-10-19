@@ -681,6 +681,18 @@ public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, Benc
         }   
         return (int) r;
     }
+    
+    
+    /**
+     * Return the total cache size, including the buffer pool and the session caches
+     * 
+     * @return the cache size in MB
+     */
+    @Override
+    public int getTotalCacheSize() {
+    	int queryCacheSize = 0; // TODO Implement this
+    	return getBufferPoolSize() + queryCacheSize;
+    }
 
 
     public void clear() {

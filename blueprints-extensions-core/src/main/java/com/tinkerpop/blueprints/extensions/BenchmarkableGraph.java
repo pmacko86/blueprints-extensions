@@ -45,4 +45,11 @@ public interface BenchmarkableGraph extends Graph {
      * @return the buffer pool size in MB
      */
     public int getBufferPoolSize();
+    
+    /**
+     * Return the total cache size, including the buffer pool and the session caches.
+     * 
+     * @return the cache size in MB
+     */
+    public int getTotalCacheSize();
 }

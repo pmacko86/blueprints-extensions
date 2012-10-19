@@ -181,12 +181,24 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     		return maxPersistentPool * frameSize / 1024;
     	}
     	
-    	int maxCache = DexProperties.getInteger("dex.io.cache.maxsize", -1);
-    	if (maxCache >= 0) return maxCache - 64;	// XXX This is horrible hack!
-    	
     	throw new IllegalStateException("Cannot determine the persitent pool size.");
     }
     
+    
+    /**
+     * Return the total cache size, including the buffer pool and the session caches.
+     * 
+     * @return the cache size in MB
+     */
+    @Override
+    public int getTotalCacheSize() {
+    	
+    	int maxCache = DexProperties.getInteger("dex.io.cache.maxsize", -1);
+    	if (maxCache >= 0) return maxCache;
+    	
+    	throw new IllegalStateException("Cannot determine the cache size.");
+    }
+
     
     /**
      * Export a type - a helper to exportToCSVs()

@@ -36,7 +36,7 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
 	final protected static BdbRecordNumberComparator recordNumberComparator = new BdbRecordNumberComparator();
 	
     private Environment dbEnv;
-    private int persistentCacheSize;
+    private int cacheSize;
   
     public Database vertexDb;
     public Database outDb;
@@ -95,11 +95,11 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
      * Creates a new instance of a BdbGraph at directory.
      *
      * @param directory The database environment's persistent directory name.
-     * @param persistentCacheSize the database cache size (in MB) for the persistent data.
+     * @param cacheSize the database cache size (in MB).
      */
-    public BdbGraph(final String directory, int persistentCacheSize) {
+    public BdbGraph(final String directory, int cacheSize) {
     	
-    	this.persistentCacheSize = persistentCacheSize;
+    	this.cacheSize = cacheSize;
     	
         try {
         	File envHome = new File(directory);
@@ -107,8 +107,8 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
         	
         	EnvironmentConfig envConf = new EnvironmentConfig();
             envConf.setAllowCreate(true);
-            envConf.setCacheMax(persistentCacheSize * 1048576);
-            envConf.setCacheSize(persistentCacheSize * 1048576);
+            envConf.setCacheMax(cacheSize * 1048576);
+            envConf.setCacheSize(cacheSize * 1048576);
             envConf.setCacheCount(1);
             envConf.setInitializeCache(true);
             //envConf.setInitializeLocking(true);
@@ -165,7 +165,17 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
      */
     @Override
     public int getBufferPoolSize() {
-    	return persistentCacheSize;
+    	return cacheSize;	// currently everything goes towards the buffer pool
+    }
+    
+    /**
+     * Return the total cache size, including the buffer pool and the session caches.
+     * 
+     * @return the cache size in MB
+     */
+    @Override
+    public int getTotalCacheSize() {
+    	return cacheSize;
     }
 
     public Vertex addVertex(final Object id) {        

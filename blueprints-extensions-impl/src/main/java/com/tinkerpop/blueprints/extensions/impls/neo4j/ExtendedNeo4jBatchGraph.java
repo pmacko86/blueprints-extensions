@@ -116,4 +116,14 @@ public class ExtendedNeo4jBatchGraph extends Neo4jBatchGraph implements Benchmar
     public int getBufferPoolSize() {
     	throw new UnsupportedOperationException();
     }
+    
+    /**
+     * Return the total cache size, including the buffer pool and the session caches.
+     * 
+     * @return the cache size in MB
+     */
+    @Override
+    public int getTotalCacheSize() {
+    	throw new UnsupportedOperationException();
+    }
 }
