@@ -9,7 +9,9 @@ import java.util.Map;
 import org.apache.commons.lang.StringEscapeUtils;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
 
 
 /**
@@ -310,8 +312,8 @@ public class FGF2DexCSV {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeStart(String type, long count) {
-			startNewType(type, true);
+		public void vertexTypeStart(VertexType type, long count) {
+			startNewType(type.getName(), true);
 			listenerCycle = nodesProcessed % 100000;
 		}
 
@@ -324,7 +326,7 @@ public class FGF2DexCSV {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void vertex(long id, String type,
+		public void vertex(long id, VertexType type,
 				Map<PropertyType, Object> properties) {
 			
 			try {
@@ -358,8 +360,8 @@ public class FGF2DexCSV {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeEnd(String type, long count) {
-			finishType(type, true);
+		public void vertexTypeEnd(VertexType type, long count) {
+			finishType(type.getName(), true);
 		}
 
 		
@@ -370,8 +372,8 @@ public class FGF2DexCSV {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeStart(String type, long count) {
-			startNewType(type, false);
+		public void edgeTypeStart(EdgeType type, long count) {
+			startNewType(type.getName(), false);
 			listenerCycle = edgesProcessed % 100000;
 		}
 
@@ -386,7 +388,7 @@ public class FGF2DexCSV {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, String type,
+		public void edge(long id, long head, long tail, EdgeType type,
 				Map<PropertyType, Object> properties) {
 
 			try {
@@ -422,8 +424,8 @@ public class FGF2DexCSV {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeEnd(String type, long count) {
-			finishType(type, false);
+		public void edgeTypeEnd(EdgeType type, long count) {
+			finishType(type.getName(), false);
 		}
 		
 		

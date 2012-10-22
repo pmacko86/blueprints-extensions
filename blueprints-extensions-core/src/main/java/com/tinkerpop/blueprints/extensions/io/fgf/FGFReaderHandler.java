@@ -25,7 +25,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param count the number of vertices of the given type
 	 */
-	public void vertexTypeStart(String type, long count);
+	public void vertexTypeStart(FGFReader.VertexType type, long count);
 
 
 	/**
@@ -35,7 +35,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param properties the map of properties
 	 */
-	public void vertex(long id, String type, Map<FGFReader.PropertyType, Object> properties);
+	public void vertex(long id, FGFReader.VertexType type, Map<FGFReader.PropertyType, Object> properties);
 	
 	
 	/**
@@ -44,7 +44,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param count the number of vertices of the given type
 	 */
-	public void vertexTypeEnd(String type, long count);
+	public void vertexTypeEnd(FGFReader.VertexType type, long count);
 	
 	
 	/**
@@ -53,7 +53,7 @@ public interface FGFReaderHandler {
 	 * @param type the edge type
 	 * @param count the number of edges of the given type
 	 */
-	public void edgeTypeStart(String type, long count);
+	public void edgeTypeStart(FGFReader.EdgeType type, long count);
 
 
 	/**
@@ -65,7 +65,7 @@ public interface FGFReaderHandler {
 	 * @param type the edge type (label)
 	 * @param properties the map of properties
 	 */
-	public void edge(long id, long head, long tail, String type, Map<FGFReader.PropertyType, Object> properties);
+	public void edge(long id, long head, long tail, FGFReader.EdgeType type, Map<FGFReader.PropertyType, Object> properties);
 	
 	
 	/**
@@ -74,5 +74,5 @@ public interface FGFReaderHandler {
 	 * @param type the edge type
 	 * @param count the number of edges of the given type
 	 */
-	public void edgeTypeEnd(String type, long count);
+	public void edgeTypeEnd(FGFReader.EdgeType type, long count);
 }

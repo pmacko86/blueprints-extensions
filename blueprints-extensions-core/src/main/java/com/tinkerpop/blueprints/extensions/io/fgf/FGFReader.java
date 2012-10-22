@@ -24,11 +24,14 @@ public class FGFReader implements Closeable {
 	private boolean closed = false;
 	
 	private PropertyType[] propertyTypes;
-	private ObjectType[] vertexTypes;
-	private ObjectType[] edgeTypes;
+	private VertexType[] vertexTypes;
+	private EdgeType[] edgeTypes;
 	
 	private long totalVertices;
 	private long totalEdges;
+	
+	private long initialVertexId;
+	private long initialEdgeId;
 
 	
 	/**
@@ -55,20 +58,43 @@ public class FGFReader implements Closeable {
 		
 		// Read the metadata
 		
+		long metadataHeaderBytes = din.readLong();
+		if (metadataHeaderBytes % 8 != 0) {
+			throw new IOException("Invalid number of metadata header bytes -- must be a multiple of 8");
+		}
+		int fields = (int) metadataHeaderBytes / 8;
+		
+		initialVertexId = (fields--) > 0 ? din.readLong() : 0;
+		initialEdgeId   = (fields--) > 0 ? din.readLong() : 0;
+		
+		while (fields > 0) {
+			din.readLong();
+			fields--;
+		}
+		
+		
+		// Read the object counts
+		
+		din.read(header);
+		assertMagic(header, "CNTS");
+		
 		propertyTypes = new PropertyType[(int) din.readLong()];
 		
+		int objectTypeIndex = 0;
 		totalVertices = 0;
-		vertexTypes = new ObjectType[(int) din.readLong()];
+		vertexTypes = new VertexType[(int) din.readLong()];
 		for (int i = 0; i < vertexTypes.length; i++) {
-			vertexTypes[i] = new ObjectType(din.readLong());
-			totalVertices += vertexTypes[i].count;
+			String name = din.readUTF();
+			vertexTypes[i] = new VertexType(objectTypeIndex++, name, din.readLong());
+			totalVertices += vertexTypes[i].size();
 		}
 		
 		totalEdges = 0;
-		edgeTypes = new ObjectType[(int) din.readLong()];
+		edgeTypes = new EdgeType[(int) din.readLong()];
 		for (int i = 0; i < edgeTypes.length; i++) {
-			edgeTypes[i] = new ObjectType(din.readLong());
-			totalEdges += edgeTypes[i].count;
+			String name = din.readUTF();
+			edgeTypes[i] = new EdgeType(objectTypeIndex++, name, din.readLong());
+			totalEdges += edgeTypes[i].size();
 		}
 		
 		
@@ -114,6 +140,26 @@ public class FGFReader implements Closeable {
 	
 	
 	/**
+	 * Get the initial vertex ID
+	 * 
+	 * @return the initial vertex ID
+	 */
+	public long getInitialVertexId() {
+		return initialVertexId;
+	}
+	
+	
+	/**
+	 * Get the initial edge ID
+	 * 
+	 * @return the initial edge ID
+	 */
+	public long getInitialEdgeId() {
+		return initialEdgeId;
+	}
+	
+	
+	/**
 	 * Get the total number of vertices
 	 * 
 	 * @return the total number of vertices
@@ -140,6 +186,26 @@ public class FGFReader implements Closeable {
 	 */
 	public PropertyType[] getPropertyTypes() {
 		return propertyTypes;
+	}
+	
+	
+	/**
+	 * Get all vertex types
+	 * 
+	 * @return an array of all vertex types
+	 */
+	public VertexType[] getVertexTypes() {
+		return vertexTypes;
+	}
+	
+	
+	/**
+	 * Get all edge types
+	 * 
+	 * @return an array of all edge types
+	 */
+	public EdgeType[] getEdgeTypes() {
+		return edgeTypes;
 	}
 	
 	
@@ -204,57 +270,63 @@ public class FGFReader implements Closeable {
 		
 		// Read the vertex types
 		
-		long id = 0;
-		for (ObjectType t : vertexTypes) {
+		long id = initialVertexId;
+		for (VertexType t : vertexTypes) {
 			
 			ObjectInputStream iin = new ObjectInputStream(din);
 			
 			iin.read(header);
-			assertMagic(header, "NODE");			
-			t.name = iin.readUTF();
+			assertMagic(header, "NODE");
+			String name = iin.readUTF();
+			if (!t.getName().equals(name)) {
+				throw new IOException("Vertex type name mismatch: " + t.getName() + " expected, but " + name + " found");
+			}
 			
-			if (handler != null) handler.vertexTypeStart(t.name, t.count);
+			if (handler != null) handler.vertexTypeStart(t, t.size());
 			
 			
 			// Read the vertices
 			
-			for (long i = 0; i < t.count; i++) {
+			for (long i = 0; i < t.size(); i++) {
 				
 				readProperties(iin, properties);
 				
-				if (handler != null) handler.vertex(id++, t.name, properties);
+				if (handler != null) handler.vertex(id++, t, properties);
 			}
 			
-			if (handler != null) handler.vertexTypeEnd(t.name, t.count);
+			if (handler != null) handler.vertexTypeEnd(t, t.size());
 		}
 		
 		
 		// Read the edge types
 		
-		id = 0;
-		for (ObjectType t : edgeTypes) {
+		id = initialEdgeId;
+		for (EdgeType t : edgeTypes) {
 			
 			ObjectInputStream iin = new ObjectInputStream(din);
 			
 			iin.read(header);
 			assertMagic(header, "EDGE");
-			t.name = iin.readUTF();
+			String name = iin.readUTF();
+			if (!t.getName().equals(name)) {
+				throw new IOException("Edge type name mismatch: " + t.getName() + " expected, but " + name + " found");
+			}
 			
-			if (handler != null) handler.edgeTypeStart(t.name, t.count);
+			if (handler != null) handler.edgeTypeStart(t, t.size());
 			
 			
 			// Read the edges
 			
-			for (int i = 0; i < t.count; i++) {
+			for (int i = 0; i < t.size(); i++) {
 				
 				long head = iin.readLong();
 				long tail = iin.readLong();
 				readProperties(iin, properties);
 				
-				if (handler != null) handler.edge(id++, head, tail, t.name, properties);
+				if (handler != null) handler.edge(id++, head, tail, t, properties);
 			}
 			
-			if (handler != null) handler.edgeTypeEnd(t.name, t.count);
+			if (handler != null) handler.edgeTypeEnd(t, t.size());
 		}
 		
 		
@@ -386,14 +458,105 @@ public class FGFReader implements Closeable {
 	/**
 	 * Object type
 	 */
-	private class ObjectType {
+	public abstract class ObjectType {
 		
-		public String name;
-		public long count;
+		private int index;
+		private String name;
+		private long count;
+		private Object aux;
 		
-		public ObjectType(long count) {
-			this.name = null;
+		
+		private ObjectType(int index, String name, long count) {
+			this.index = index;
+			this.name = name;
 			this.count = count;
+			this.aux = null;
+		}
+
+		
+		/**
+		 * Return the number of object of the given type
+		 * 
+		 * @return the number of the objects
+		 */
+		public long size() {
+			return count;
+		}
+		
+		
+		/**
+		 * Get the type name
+		 * 
+		 * @return the vertex or edge type name
+		 */
+		public String getName() {
+			return name;
+		}
+		
+		
+		/**
+		 * Get the user-supplied auxiliary information
+		 * 
+		 * @return the auxiliary object
+		 */
+		public Object getAux() {
+			return aux;
+		}
+		
+		
+		/**
+		 * Set the user-supplied auxiliary information
+		 * 
+		 * @param aux the auxiliary object
+		 */
+		public void setAux(Object aux) {
+			this.aux = aux;
+		}
+		
+		
+		/**
+		 * Check whether the property type is equal to another property type
+		 * 
+		 * @param other the other object
+		 * @return true if they are equal
+		 */
+		@Override
+		public boolean equals(Object other) {
+			if (!(other instanceof PropertyType)) return false;
+			return ((PropertyType) other).index == index;
+		}
+		
+		
+		/**
+		 * Compute the hash code
+		 * 
+		 * @return the hash code
+		 */
+		@Override
+		public int hashCode() {
+			return index;
+		}
+	}
+	
+	
+	/**
+	 * A vertex type
+	 */
+	public class VertexType extends ObjectType {
+		
+		private VertexType(int index, String name, long count) {
+			super(index, name, count);
+		}
+	}
+	
+	
+	/**
+	 * An edge type
+	 */
+	public class EdgeType extends ObjectType {
+		
+		private EdgeType(int index, String name, long count) {
+			super(index, name, count);
 		}
 	}
 }

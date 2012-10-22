@@ -2,6 +2,7 @@ package com.tinkerpop.blueprints.extensions.io.fgf;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -22,7 +23,7 @@ import java.util.Map.Entry;
 public class FGFWriter implements Closeable {
 	
 	private File file;
-	private FileOutputStream out;
+	private DataOutputStream out;
 	
 	private File propertyTypeFile;
 	private RandomAccessFile propertyTypeOut;
@@ -33,6 +34,11 @@ public class FGFWriter implements Closeable {
 	private boolean closed = false;
 	private Map<String, PropertyType> propertyTypes = new HashMap<String, PropertyType>();
 	
+	private ByteBuffer bb = ByteBuffer.allocate(8);
+	
+	private long initialVertexId;
+	private long initialEdgeId;
+	
 
 	/**
 	 * Create an instance of class FGFWriter and open the file for writing
@@ -41,9 +47,34 @@ public class FGFWriter implements Closeable {
 	 * @throws IOException on error
 	 */
 	public FGFWriter(File file) throws IOException {
+		this(file, 0, 0);
+	}
+	
+
+	/**
+	 * Create an instance of class FGFWriter and open the file for writing
+	 * 
+	 * @param file the file
+	 * @param initialVertexId the initial vertex ID
+	 * @param initialEdgeId the initial vertex ID
+	 * @throws IOException on error
+	 */
+	public FGFWriter(File file, long initialVertexId, long initialEdgeId) throws IOException {
 		
 		this.file = file;
-		out = new FileOutputStream(file);
+		this.initialVertexId = initialVertexId;
+		this.initialEdgeId = initialEdgeId;
+		
+		
+		// Check
+		
+		if (initialVertexId < 0) throw new IllegalArgumentException("initialVertexId < 0");
+		if (initialEdgeId   < 0) throw new IllegalArgumentException("initialEdgeId   < 0");
+		
+		
+		// Open the output streams
+		
+		out = new DataOutputStream(new FileOutputStream(file));
 		
 		propertyTypeFile = File.createTempFile(file.getName(), ".tmp");
 		propertyTypeFile.deleteOnExit();
@@ -67,6 +98,20 @@ public class FGFWriter implements Closeable {
 	
 	
 	/**
+	 * Write a long value to an output stream
+	 * 
+	 * @param v the long value
+	 * @throws IOException on error
+	 */
+	private void write(long v) throws IOException {
+		bb.rewind();
+		bb.clear();
+		bb.putLong(v);
+		out.write(bb.array());
+	}
+	
+	
+	/**
 	 * Finalize and close the file
 	 * 
 	 * @throws IOException on error
@@ -83,32 +128,58 @@ public class FGFWriter implements Closeable {
 		out.write('F');
 		out.write('1');
 		
-		ByteBuffer bb = ByteBuffer.allocate(8);
-		bb.clear();
-		bb.putLong(propertyTypes.size());
-		out.write(bb.array());
+		
+		//
+		// Metadata
+		//
+		
+		int numFields = 2;
+		int fieldId = 0;
+		
+		write(numFields * 8);
 
-		bb.rewind();
-		bb.clear();
-		bb.putLong(vertexTypes.size());
-		out.write(bb.array());
+		
+		// Fields: Initial IDs
+		
+		write(initialVertexId); fieldId++;
+		write(initialEdgeId  ); fieldId++;
+		
+		
+		// Fields: Finish
+		
+		assert fieldId == numFields;
+		
+		
+		// Object counts
+
+		out.write('C');
+		out.write('N');
+		out.write('T');
+		out.write('S');
+		
+		write(propertyTypes.size());
+		
+		write(vertexTypes.size());
 		for (Entry<String, ObjectType> p : vertexTypes.entrySet()) {
-			bb.rewind();
-			bb.clear();
-			bb.putLong(p.getValue().count);
-			out.write(bb.array());
+			out.writeUTF(p.getKey());
+			write(p.getValue().count);
 		}
 
-		bb.rewind();
-		bb.clear();
-		bb.putLong(edgeTypes.size());
-		out.write(bb.array());
+		write(edgeTypes.size());
 		for (Entry<String, ObjectType> p : edgeTypes.entrySet()) {
-			bb.rewind();
-			bb.clear();
-			bb.putLong(p.getValue().count);
-			out.write(bb.array());
+			out.writeUTF(p.getKey());
+			write(p.getValue().count);
 		}
+		
+		
+		//
+		// Data
+		//
+		
+		// Attributes
+		
+		byte[] buffer = new byte[1024 * 1024];
+		int c;
 
 		out.write('A');
 		out.write('T');
@@ -117,18 +188,15 @@ public class FGFWriter implements Closeable {
 		
 		out.flush();
 		
-		
-		// Data
-		
-		byte[] buffer = new byte[1024 * 1024];
-		int c;
-		
 		propertyTypeOut.seek(0);
 		while ((c = propertyTypeOut.read(buffer)) > 0) {
 			out.write(buffer, 0, c);
 		}
 		propertyTypeOut.close();
 		propertyTypeFile.delete();
+		
+		
+		// Vertices and edges
 		
 		for (Entry<String, ObjectType> p : vertexTypes.entrySet()) {
 			p.getValue().out.close();
@@ -149,6 +217,9 @@ public class FGFWriter implements Closeable {
 			fin.close();
 			p.getValue().file.delete();
 		}
+		
+		
+		// Finish
 
 		out.write('E');
 		out.write('N');
@@ -282,7 +353,7 @@ public class FGFWriter implements Closeable {
 	public long writeVertex(String type, Map<String, Object> properties) throws IOException {
 		
 		ObjectType t = getVertexType(type);
-		long id = t.count++;
+		long id = initialVertexId + t.count++;
 				
 		writeProperties(t.out, properties);
 		

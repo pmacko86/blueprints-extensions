@@ -3,8 +3,10 @@ package com.tinkerpop.blueprints.extensions.io.fgf;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
+import com.tinkerpop.blueprints.CloseableIterable;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Features;
 import com.tinkerpop.blueprints.Graph;
@@ -13,7 +15,9 @@ import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
@@ -43,7 +47,7 @@ public class FGFGraphLoader {
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void loadTo(Graph outGraph, File file, int bufferSize) throws IOException, ClassNotFoundException {
-		load(outGraph, file, bufferSize, false, null);
+		load(outGraph, file, bufferSize, false, true, null);
 	}
 	
 	
@@ -54,26 +58,54 @@ public class FGFGraphLoader {
 	 * @param file the input file
 	 * @param bufferSize the transaction buffer size
 	 * @param indexAllProperties whether to index all properties
+	 * @param bulkLoad true to bulk-load the graph; false to use incremental load 
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(Graph outGraph, File file, int bufferSize,
-			boolean indexAllProperties, GraphProgressListener listener) throws IOException, ClassNotFoundException {
+			boolean indexAllProperties, boolean bulkLoad, GraphProgressListener listener)
+					throws IOException, ClassNotFoundException {
+		
+		// Open the reader
 		
 		FGFReader reader = new FGFReader(file);
-
-		if (outGraph instanceof BulkloadableGraph) {
+		
+		
+		// Check whether the input file and the settings are compatible with bulk-load, if it is enabled
+		
+		if (bulkLoad || outGraph instanceof Neo4jBatchGraph) {
+			if (reader.getInitialVertexId() != 0) {
+				reader.close();
+				throw new IOException("The FGF file is not bulk-loadable: the initial vertex ID is not 0");
+			}
+			
+			if (reader.getInitialEdgeId() != 0) {
+				reader.close();
+				throw new IOException("The FGF file is not bulk-loadable: the initial edge ID is not 0");
+			}
+		}
+		
+		
+		// Initialize
+		
+		if (bulkLoad && outGraph instanceof BulkloadableGraph) {
 			((BulkloadableGraph) outGraph).startBulkLoad();
 		}
 
     	try {
-    		final Graph graph = outGraph instanceof TransactionalGraph
+    		
+    		// Wrap the graph and start the loading process
+    		
+    		final Graph graph = bulkLoad && outGraph instanceof TransactionalGraph
     				? BatchGraph.wrap(outGraph, bufferSize) : outGraph;
 
     		Loader l = new Loader(graph, reader, indexAllProperties, listener);
     		reader.read(l);
     		l = null;
+    		
+    		
+    		// Finish
     		
 			if (listener != null) {
 				listener.graphProgress((int) reader.getNumberOfVertices(),
@@ -81,7 +113,10 @@ public class FGFGraphLoader {
 			}
 		}
     	finally {
-    		if (outGraph instanceof BulkloadableGraph) {
+    		
+    		// Finalize
+    		
+    		if (bulkLoad && outGraph instanceof BulkloadableGraph) {
     			((BulkloadableGraph) outGraph).stopBulkLoad();
     		}
     	}
@@ -103,6 +138,7 @@ public class FGFGraphLoader {
 		private boolean supplyPropertiesAsIds;
 		
 		private Vertex[] vertices;
+		private long vertexIdUpperBound;
 		private Map<String, Object> tempMap;
 		private long verticesLoaded;
 		private long edgesLoaded;
@@ -127,7 +163,8 @@ public class FGFGraphLoader {
 			this.features = graph.getFeatures();
 			this.supplyPropertiesAsIds = graph instanceof Neo4jBatchGraph;
 			
-			this.vertices = new Vertex[(int) this.reader.getNumberOfVertices()];
+			this.vertexIdUpperBound = this.reader.getInitialVertexId() + this.reader.getNumberOfVertices(); 
+			this.vertices = new Vertex[(int) this.vertexIdUpperBound];
 			this.tempMap = new HashMap<String, Object>();
 			this.verticesLoaded = 0;
 			this.edgesLoaded = 0;
@@ -154,10 +191,10 @@ public class FGFGraphLoader {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeStart(String type, long count) {
+		public void vertexTypeStart(VertexType type, long count) {
 			
 			if (graph instanceof DexGraph) {
-				((DexGraph) graph).label.set("".equals(type) ? DexGraph.DEFAULT_DEX_VERTEX_LABEL : type);
+				((DexGraph) graph).label.set("".equals(type.getName()) ? DexGraph.DEFAULT_DEX_VERTEX_LABEL : type.getName());
 				
 				for (PropertyType t : reader.getPropertyTypes()) {
 					((PropertyTypeAux) t.getAux()).vertexIndexCreated = false;
@@ -177,7 +214,7 @@ public class FGFGraphLoader {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void vertex(long id, String type, Map<PropertyType, Object> properties) {
+		public void vertex(long id, VertexType type, Map<PropertyType, Object> properties) {
 			
 			Object a = id;
 			boolean hasAdditionalLabel = false;
@@ -186,17 +223,23 @@ public class FGFGraphLoader {
 				for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
 					tempMap.put(e.getKey().getName(), e.getValue());
 				}
-				if (!tempMap.containsKey(StringFactory.LABEL) && !"".equals(type)) {
-					tempMap.put(StringFactory.LABEL, type);
+				if (!tempMap.containsKey(StringFactory.LABEL) && !"".equals(type.getName())) {
+					tempMap.put(StringFactory.LABEL, type.getName());
 					hasAdditionalLabel = true;
 				}
 				tempMap.put(KEY_ORIGINAL_ID, (int) id);
 				a = tempMap;
 			}
 			
+			
+			// Create the vertex
+			
 			Vertex v = graph.addVertex(a);
 			vertices[(int) id] = v;
 			verticesLoaded++;
+			
+			
+			// Properties
 			
 			if (!supplyPropertiesAsIds) {
 				boolean hasLabel = false;
@@ -204,8 +247,8 @@ public class FGFGraphLoader {
 					hasLabel = hasLabel || StringFactory.LABEL.equals(e.getKey().getName()); 
 					v.setProperty(e.getKey().getName(), e.getValue());
 				}
-				if (!hasLabel && !"".equals(type)) {
-					v.setProperty(StringFactory.LABEL, type);
+				if (!hasLabel && !"".equals(type.getName())) {
+					v.setProperty(StringFactory.LABEL, type.getName());
 					hasAdditionalLabel = true;
 				}
 				v.setProperty(KEY_ORIGINAL_ID, (int) id);
@@ -237,6 +280,9 @@ public class FGFGraphLoader {
 				}
 			}
 			
+			
+			// Listener callback
+			
 			if (listener != null && verticesLoaded % 10000 == 0) {
 				listener.graphProgress((int) verticesLoaded, 0);
 			}
@@ -250,7 +296,7 @@ public class FGFGraphLoader {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeEnd(String type, long count) {
+		public void vertexTypeEnd(VertexType type, long count) {
 			if (graph instanceof DexGraph) {
 				((DexGraph) graph).label.set(null);
 			}
@@ -264,9 +310,9 @@ public class FGFGraphLoader {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeStart(String type, long count) {
+		public void edgeTypeStart(EdgeType type, long count) {
 			if (graph instanceof DexGraph) {
-				((DexGraph) graph).label.set(type);
+				((DexGraph) graph).label.set(type.getName());
 				
 				for (PropertyType t : reader.getPropertyTypes()) {
 					((PropertyTypeAux) t.getAux()).edgeIndexCreated = false;
@@ -285,7 +331,7 @@ public class FGFGraphLoader {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, String type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			Object a = id;
 			if (supplyPropertiesAsIds) {
@@ -296,8 +342,41 @@ public class FGFGraphLoader {
 				a = tempMap;
 			}
 			
-			Edge e = graph.addEdge(a, vertices[(int) tail], vertices[(int) head], type);
+			
+			// Look up the head and tail vertices; attempt to use the key indexes if the corresponding
+			// Vertex objects are not readily available
+			
+			Vertex t = vertices[(int) tail];
+			Vertex h = vertices[(int) head];
+			
+			if (t == null) {
+				Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) tail);
+				Iterator<Vertex> itr = i.iterator();
+				if (itr.hasNext()) t = itr.next();
+				boolean b = itr.hasNext();
+				if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
+				if (t == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + tail);
+				if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + tail);
+			}
+			
+			if (h == null) {
+				Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) head);
+				Iterator<Vertex> itr = i.iterator();
+				if (itr.hasNext()) h = itr.next();
+				boolean b = itr.hasNext();
+				if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
+				if (h == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + head);
+				if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + head);
+			}
+			
+			
+			// Create the edge
+			
+			Edge e = graph.addEdge(a, t, h, type.getName());
 			edgesLoaded++;
+			
+			
+			// Set properties
 			
 			if (!supplyPropertiesAsIds) {
 				for (Map.Entry<PropertyType, Object> p : properties.entrySet()) {
@@ -313,6 +392,9 @@ public class FGFGraphLoader {
 					}
 				}
 			}
+			
+			
+			// Listener callback
 		
 			if (listener != null && edgesLoaded % 10000 == 0) {
 				listener.graphProgress((int) verticesLoaded, (int) edgesLoaded);
@@ -327,7 +409,7 @@ public class FGFGraphLoader {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeEnd(String type, long count) {
+		public void edgeTypeEnd(EdgeType type, long count) {
 			if (graph instanceof DexGraph) {
 				((DexGraph) graph).label.set(null);
 			}

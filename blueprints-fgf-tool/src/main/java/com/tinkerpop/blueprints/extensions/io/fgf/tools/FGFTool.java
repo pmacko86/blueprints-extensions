@@ -13,6 +13,8 @@ import joptsimple.OptionSet;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
@@ -45,6 +47,7 @@ public class FGFTool {
 		System.err.println("  generate      Generate a graph and save it as .fgf");
 		System.err.println("  graphml2fgf   Convert a .graphml file to a .fgf file");
 		System.err.println("  help          Print this help");
+		System.err.println("  split         Split a .fgf file into two files");
 		System.err.println("  stat          Print graph statistics of a .fgf file");
 	}
     
@@ -101,6 +104,13 @@ public class FGFTool {
 	    	
 	    	if ("graphml2fgf".equals(tool)) {
 	    		System.exit(graphml2fgf(tool, toolArgs));
+	    	}
+	    	
+	    	
+	    	// Tool: split
+	    	
+	    	if ("split".equals(tool)) {
+	    		System.exit(FGFSplitter.run(tool, toolArgs));
 	    	}
 	    	
 	    	
@@ -199,17 +209,17 @@ public class FGFTool {
 				}
 				
 				@Override
-				public void vertexTypeStart(String type, long count) {
+				public void vertexTypeStart(VertexType type, long count) {
 				}
 				
 				@Override
-				public void vertexTypeEnd(String type, long count) {
+				public void vertexTypeEnd(VertexType type, long count) {
 				}
 				
 				@Override
-				public void vertex(long id, String type,
+				public void vertex(long id, VertexType type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Node " + id + ", type " + ("".equals(type) ? "<default>" : type));
+					System.out.print("Node " + id + ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
 					printProperties(properties);
 					System.out.println();
 				}
@@ -219,18 +229,18 @@ public class FGFTool {
 				}
 				
 				@Override
-				public void edgeTypeStart(String type, long count) {
+				public void edgeTypeStart(EdgeType type, long count) {
 				}
 				
 				@Override
-				public void edgeTypeEnd(String type, long count) {
+				public void edgeTypeEnd(EdgeType type, long count) {
 				}
 				
 				@Override
-				public void edge(long id, long head, long tail, String type,
+				public void edge(long id, long head, long tail, EdgeType type,
 						Map<PropertyType, Object> properties) {
 					System.out.print("Edge " + id + ": " + tail + " ---> " + head
-							+ ", type " + ("".equals(type) ? "<default>" : type));
+							+ ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
 					printProperties(properties);
 					System.out.println();
 				}
@@ -462,17 +472,17 @@ public class FGFTool {
 			r.read(new FGFReaderHandler() {
 				
 				@Override
-				public void vertexTypeStart(String type, long count) {
+				public void vertexTypeStart(VertexType type, long count) {
 					System.out.println("" + count + " node" + (count == 1 ? "" : "s")
-							+ " of type " + ("".equals(type) ? "<default>" : type));
+							+ " of type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
 				}
 				
 				@Override
-				public void vertexTypeEnd(String type, long count) {
+				public void vertexTypeEnd(VertexType type, long count) {
 				}
 				
 				@Override
-				public void vertex(long id, String type, Map<PropertyType, Object> properties) {
+				public void vertex(long id, VertexType type, Map<PropertyType, Object> properties) {
 				}
 				
 				@Override
@@ -481,17 +491,17 @@ public class FGFTool {
 				}
 				
 				@Override
-				public void edgeTypeStart(String type, long count) {
+				public void edgeTypeStart(EdgeType type, long count) {
 					System.out.println("" + count + " edge" + (count == 1 ? "" : "s")
-							+ " of type " + ("".equals(type) ? "<default>" : type));
+							+ " of type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
 				}
 				
 				@Override
-				public void edgeTypeEnd(String type, long count) {
+				public void edgeTypeEnd(EdgeType type, long count) {
 				}
 				
 				@Override
-				public void edge(long id, long head, long tail, String type, Map<PropertyType, Object> properties) {
+				public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
 				}
 			});
 		} catch (ClassNotFoundException e) {

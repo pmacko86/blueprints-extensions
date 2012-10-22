@@ -12,8 +12,10 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
@@ -55,6 +57,14 @@ public class Neo4jFGFLoader {
 			throws IOException, ClassNotFoundException {
 		
 		FGFReader reader = new FGFReader(file);
+		
+		if (reader.getInitialVertexId() != 0) {
+			throw new IOException("The FGF file is not bulk-loadable: the initial vertex ID is not 0");
+		}
+		
+		if (reader.getInitialEdgeId() != 0) {
+			throw new IOException("The FGF file is not bulk-loadable: the initial edge ID is not 0");
+		}
 
 		Loader l = new Loader(graph, reader, indexAllProperties, listener);
 		reader.read(l);
@@ -134,7 +144,7 @@ public class Neo4jFGFLoader {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeStart(String type, long count) {
+		public void vertexTypeStart(VertexType type, long count) {
 			// Nothing to do
 		}
 
@@ -147,15 +157,15 @@ public class Neo4jFGFLoader {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void vertex(long id, String type, Map<PropertyType, Object> properties) {
+		public void vertex(long id, VertexType type, Map<PropertyType, Object> properties) {
 			
 			tempMap.clear();
 			for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
 				tempMap.put(e.getKey().getName(), e.getValue());
 				((PropertyTypeAux) e.getKey().getAux()).vertexKeyUsed = true;
 			}
-			if (!tempMap.containsKey(StringFactory.LABEL) && !"".equals(type)) {
-				tempMap.put(StringFactory.LABEL, type);
+			if (!tempMap.containsKey(StringFactory.LABEL) && !"".equals(type.getName())) {
+				tempMap.put(StringFactory.LABEL, type.getName());
 				hasAdditionalVertexLabel = true;
 			}
 			tempMap.put(FGFGraphLoader.KEY_ORIGINAL_ID, (int) id);
@@ -177,7 +187,7 @@ public class Neo4jFGFLoader {
 		 * @param count the number of vertices of the given type
 		 */
 		@Override
-		public void vertexTypeEnd(String type, long count) {
+		public void vertexTypeEnd(VertexType type, long count) {
 			
 			if (!originalVertexIdIndexCreated) {
 				graph.createKeyIndex(FGFGraphLoader.KEY_ORIGINAL_ID, Vertex.class);
@@ -208,8 +218,8 @@ public class Neo4jFGFLoader {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeStart(String type, long count) {
-			relationshipType = DynamicRelationshipType.withName(type);
+		public void edgeTypeStart(EdgeType type, long count) {
+			relationshipType = DynamicRelationshipType.withName(type.getName());
 		}
 
 		
@@ -223,7 +233,7 @@ public class Neo4jFGFLoader {
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, String type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			tempMap.clear();
 			for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
@@ -247,7 +257,7 @@ public class Neo4jFGFLoader {
 		 * @param count the number of edges of the given type
 		 */
 		@Override
-		public void edgeTypeEnd(String type, long count) {
+		public void edgeTypeEnd(EdgeType type, long count) {
 			
 			if (indexAllProperties) {
 				for (PropertyType t : reader.getPropertyTypes()) {
