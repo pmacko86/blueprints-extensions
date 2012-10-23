@@ -2,6 +2,7 @@ package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -175,6 +176,10 @@ public class FGFSplitter {
 			
 			// Create the writers
 			
+			// Note: The edge ID space might not be consecutive -- it is OK for now, but it is not ideal
+			//       (We do not know exactly how many edges will go to file 1, so there might be fewer
+			//        than reader.getInitialEdgeId() + edges1, but definitely not more than that).
+			
 			FGFWriter writer1 = new FGFWriter(new File(outputFiles.get(0)),
 					reader.getInitialVertexId(), reader.getInitialEdgeId());
 			
@@ -186,6 +191,7 @@ public class FGFSplitter {
 			
 			GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
 			if (verbose) System.err.print("Processing    :");
+			if (verbose) l.graphProgress((int) 0, (int) 0);
 			
 			Splitter s = new Splitter(reader, writer1, writer2, l);
 			reader.read(s);
@@ -225,10 +231,12 @@ public class FGFSplitter {
     	private FGFWriter[] writers;
     	private GraphReaderProgressListener listener;
     	
-    	private HashMap<String, Object> temp;    	
+    	private HashMap<String, Object> temp;
+    	private long initialVertexId;
     	private long vertexId;
     	private long verticesLoaded;
     	private long edgesLoaded;
+    	private BitSet verticesInFile1;
      	
     	
     	/**
@@ -244,9 +252,11 @@ public class FGFSplitter {
     		this.listener = listener;
     		
     		this.temp = new HashMap<String, Object>();
-    		this.vertexId = this.reader.getInitialVertexId();
-    		this.verticesLoaded = 0;
+    		this.initialVertexId = this.reader.getInitialVertexId();
+       		this.vertexId = this.reader.getInitialVertexId();
+       		this.verticesLoaded = 0;
     		this.edgesLoaded = 0;
+    		this.verticesInFile1 = new BitSet((int) this.reader.getNumberOfVertices());
     	}
 
 
@@ -271,6 +281,7 @@ public class FGFSplitter {
 			if (aux.count > 0) {
 				aux.count--;
 				w = writers[0];
+				verticesInFile1.set((int) (id - initialVertexId));
 			}
 			else {
 				w = writers[1];
@@ -311,8 +322,11 @@ public class FGFSplitter {
 				temp.put(p.getKey().getName(), p.getValue());
 			}
 			
+			boolean hIn1 = verticesInFile1.get((int) (head - initialVertexId));
+			boolean tIn1 = verticesInFile1.get((int) (tail - initialVertexId));
+			
 			FGFWriter w;
-			if (aux.count > 0) {
+			if (aux.count > 0 && hIn1 && tIn1) {
 				aux.count--;
 				w = writers[0];
 			}

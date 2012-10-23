@@ -81,20 +81,26 @@ public class FGFReader implements Closeable {
 		propertyTypes = new PropertyType[(int) din.readLong()];
 		
 		int objectTypeIndex = 0;
+		long startId = initialVertexId;
 		totalVertices = 0;
 		vertexTypes = new VertexType[(int) din.readLong()];
 		for (int i = 0; i < vertexTypes.length; i++) {
 			String name = din.readUTF();
-			vertexTypes[i] = new VertexType(objectTypeIndex++, name, din.readLong());
-			totalVertices += vertexTypes[i].size();
+			long count = din.readLong();
+			vertexTypes[i] = new VertexType(objectTypeIndex++, name, startId, count);
+			totalVertices += count;
+			startId += count;
 		}
 		
+		startId = initialEdgeId;
 		totalEdges = 0;
 		edgeTypes = new EdgeType[(int) din.readLong()];
 		for (int i = 0; i < edgeTypes.length; i++) {
 			String name = din.readUTF();
-			edgeTypes[i] = new EdgeType(objectTypeIndex++, name, din.readLong());
-			totalEdges += edgeTypes[i].size();
+			long count = din.readLong();
+			edgeTypes[i] = new EdgeType(objectTypeIndex++, name, startId, count);
+			totalEdges += count;
+			startId += count;
 		}
 		
 		
@@ -462,15 +468,27 @@ public class FGFReader implements Closeable {
 		
 		private int index;
 		private String name;
+		private long startId;
 		private long count;
 		private Object aux;
 		
 		
-		private ObjectType(int index, String name, long count) {
+		private ObjectType(int index, String name, long startId, long count) {
 			this.index = index;
 			this.name = name;
+			this.startId = startId;
 			this.count = count;
 			this.aux = null;
+		}
+
+		
+		/**
+		 * Return the first ID of object of this type
+		 * 
+		 * @return the first (starting) ID
+		 */
+		public long getStartId() {
+			return startId;
 		}
 
 		
@@ -544,8 +562,8 @@ public class FGFReader implements Closeable {
 	 */
 	public class VertexType extends ObjectType {
 		
-		private VertexType(int index, String name, long count) {
-			super(index, name, count);
+		private VertexType(int index, String name, long startId, long count) {
+			super(index, name, startId, count);
 		}
 	}
 	
@@ -555,8 +573,8 @@ public class FGFReader implements Closeable {
 	 */
 	public class EdgeType extends ObjectType {
 		
-		private EdgeType(int index, String name, long count) {
-			super(index, name, count);
+		private EdgeType(int index, String name, long startId, long count) {
+			super(index, name, startId, count);
 		}
 	}
 }

@@ -3,8 +3,10 @@ package com.tinkerpop.blueprints.extensions.io.fgf;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import com.tinkerpop.blueprints.CloseableIterable;
 import com.tinkerpop.blueprints.Edge;
@@ -142,8 +144,13 @@ public class FGFGraphLoader {
 		private Map<String, Object> tempMap;
 		private long verticesLoaded;
 		private long edgesLoaded;
+		
+		private boolean alreadyHasVertexIdIndex;
+		private boolean alreadyHasVertexLabelIndex;
 		private boolean createdVertexIdIndex;
 		private boolean createdVertexLabelIndex;
+		private Set<String> preexistingVertexPropertyIndexes;
+		private Set<String> preexistingEdgePropertyIndexes;
 		
 		
 		/**
@@ -168,8 +175,32 @@ public class FGFGraphLoader {
 			this.tempMap = new HashMap<String, Object>();
 			this.verticesLoaded = 0;
 			this.edgesLoaded = 0;
+			
+			this.alreadyHasVertexIdIndex = false;
+			this.alreadyHasVertexLabelIndex = false;
 			this.createdVertexIdIndex = false;
 			this.createdVertexLabelIndex = false;
+			
+			if (graph instanceof KeyIndexableGraph) {
+				KeyIndexableGraph g = (KeyIndexableGraph) graph;
+				
+				preexistingVertexPropertyIndexes = g.getIndexedKeys(Vertex.class);
+				preexistingEdgePropertyIndexes   = g.getIndexedKeys(Edge.class);
+				
+				if (preexistingVertexPropertyIndexes.contains(KEY_ORIGINAL_ID)) {
+					alreadyHasVertexIdIndex = true;
+					createdVertexIdIndex    = true;
+				}
+				
+				if (preexistingVertexPropertyIndexes.contains(KEY_ORIGINAL_ID)) {
+					alreadyHasVertexLabelIndex = true;
+					createdVertexLabelIndex    = true;
+				}
+			}
+			else {
+				preexistingVertexPropertyIndexes = new HashSet<String>();
+				preexistingEdgePropertyIndexes   = new HashSet<String>();
+			}
 		}
 		
 
@@ -180,7 +211,15 @@ public class FGFGraphLoader {
 		 */
 		@Override
 		public void propertyType(PropertyType type) {
-			type.setAux(new PropertyTypeAux());
+			
+			PropertyTypeAux aux = new PropertyTypeAux();
+			type.setAux(aux);
+			
+			if (graph instanceof KeyIndexableGraph) {
+				KeyIndexableGraph g = (KeyIndexableGraph) graph;
+				Set<String> kv = g.getIndexedKeys(Vertex.class);
+				if (kv.contains(type.getName())) aux.vertexIndexCreated = true;
+			}
 		}
 
 		
@@ -197,11 +236,11 @@ public class FGFGraphLoader {
 				((DexGraph) graph).label.set("".equals(type.getName()) ? DexGraph.DEFAULT_DEX_VERTEX_LABEL : type.getName());
 				
 				for (PropertyType t : reader.getPropertyTypes()) {
-					((PropertyTypeAux) t.getAux()).vertexIndexCreated = false;
+					((PropertyTypeAux) t.getAux()).vertexIndexCreated = preexistingVertexPropertyIndexes.contains(t.getName());
 				}
 				
-				createdVertexIdIndex = false;
-				createdVertexLabelIndex = false;
+				if (!alreadyHasVertexIdIndex   ) createdVertexIdIndex = false;
+				if (!alreadyHasVertexLabelIndex) createdVertexLabelIndex = false;
 			}
 		}
 
@@ -315,7 +354,7 @@ public class FGFGraphLoader {
 				((DexGraph) graph).label.set(type.getName());
 				
 				for (PropertyType t : reader.getPropertyTypes()) {
-					((PropertyTypeAux) t.getAux()).edgeIndexCreated = false;
+					((PropertyTypeAux) t.getAux()).edgeIndexCreated = preexistingEdgePropertyIndexes.contains(t.getName());
 				}
 			}
 		}
@@ -349,24 +388,42 @@ public class FGFGraphLoader {
 			Vertex t = vertices[(int) tail];
 			Vertex h = vertices[(int) head];
 			
-			if (t == null) {
-				Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) tail);
-				Iterator<Vertex> itr = i.iterator();
-				if (itr.hasNext()) t = itr.next();
-				boolean b = itr.hasNext();
-				if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
-				if (t == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + tail);
-				if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + tail);
-			}
-			
-			if (h == null) {
-				Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) head);
-				Iterator<Vertex> itr = i.iterator();
-				if (itr.hasNext()) h = itr.next();
-				boolean b = itr.hasNext();
-				if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
-				if (h == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + head);
-				if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + head);
+			if (t == null || h == null) {
+				if (graph instanceof DexGraph) {
+					((DexGraph) graph).label.set(null);
+				}
+				
+				try {
+					
+					if (t == null) {
+						Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) tail);
+						Iterator<Vertex> itr = i.iterator();
+						if (itr.hasNext()) t = itr.next();
+						boolean b = itr.hasNext();
+						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
+						if (t == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + tail);
+						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + tail);
+					}
+					
+					if (h == null) {
+						Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) head);
+						Iterator<Vertex> itr = i.iterator();
+						if (itr.hasNext()) h = itr.next();
+						boolean b = itr.hasNext();
+						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
+						if (h == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + head);
+						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + head);
+					}
+				}
+				finally {
+					if (graph instanceof DexGraph) {
+						((DexGraph) graph).label.set(type.getName());
+					}
+				}
+				
+				if (graph instanceof DexGraph) {
+					assert ((DexGraph) graph).label.get() != null;
+				}
 			}
 			
 			

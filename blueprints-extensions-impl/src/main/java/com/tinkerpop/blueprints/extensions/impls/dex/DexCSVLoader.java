@@ -146,8 +146,11 @@ public class DexCSVLoader {
 					throw new IOException("The attribute " + s + " does not appear in the .csv header");
 				}
 				
-				boolean index = indexAllProperties || s.equals(FGFGraphLoader.KEY_ORIGINAL_ID);
-				int a = graph.newAttribute(type, s, attributeTypes.get(s), index ? AttributeKind.Indexed : AttributeKind.Basic);
+				AttributeKind ak = AttributeKind.Basic;
+				if (indexAllProperties) ak = AttributeKind.Indexed;
+				if (s.equals(FGFGraphLoader.KEY_ORIGINAL_ID)) ak = AttributeKind.Unique;
+				int a = graph.newAttribute(type, s, attributeTypes.get(s), ak);
+				
 				attributeMap.put(s, a);
 				attributePositions.add(column);
 				attributes.add(a);
