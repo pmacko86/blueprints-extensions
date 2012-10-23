@@ -48,7 +48,7 @@ public class FGFTypes {
 	 * @param type the type
 	 * @return the string
 	 */
-	public static String toString(int type) {
+	public static String toString(short type) {
 		
 		switch (type) {
 		

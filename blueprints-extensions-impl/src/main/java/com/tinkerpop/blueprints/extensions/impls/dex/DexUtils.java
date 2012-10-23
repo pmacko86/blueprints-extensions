@@ -1,10 +1,14 @@
 package com.tinkerpop.blueprints.extensions.impls.dex;
 
 import com.sparsity.dex.gdb.Attribute;
+import com.sparsity.dex.gdb.AttributeKind;
+import com.sparsity.dex.gdb.DataType;
 import com.sparsity.dex.gdb.EdgesDirection;
 import com.sparsity.dex.gdb.Graph;
 import com.sparsity.dex.gdb.Objects;
+import com.sparsity.dex.gdb.Value;
 import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 
 
 /**
@@ -28,6 +32,89 @@ public class DexUtils {
 		case BOTH: return EdgesDirection.Any;
 		default  : throw new IllegalArgumentException("Invalid direction"); 
 		}
+	}
+	
+	
+	/**
+	 * Translate a property data type from FGFTypes to DEX
+	 * 
+	 * @param type the FGF type code
+	 * @return the DEX type
+	 */
+	public static DataType translateDataTypeFromFGF(short type) {
+		
+		switch (type) {
+		
+		case FGFTypes.OTHER  : throw new IllegalArgumentException("Unsupported FGF property type code");
+		case FGFTypes.STRING : return DataType.String;
+
+		case FGFTypes.BOOLEAN: return DataType.Boolean;
+		case FGFTypes.SHORT  : return DataType.Integer;
+		case FGFTypes.INTEGER: return DataType.Integer;
+		case FGFTypes.LONG   : return DataType.Integer;
+
+		case FGFTypes.FLOAT  : return DataType.Double;
+		case FGFTypes.DOUBLE : return DataType.Double;
+		
+		default:
+			throw new IllegalArgumentException("Invalid FGF property type code");
+		}
+	}
+	
+	
+	/**
+	 * Convert an Object to a Value
+	 * 
+	 * @param type the DEX data type
+	 * @param value the Object value
+	 * @param out the output Value (can be null)
+	 * @return the DEX Value (the same as out, if specified)
+	 */
+	public static Value translateValue(DataType type, Object value, Value out) {
+    	
+    	// https://github.com/tinkerpop/blueprints/blob/master/...
+    	//           blueprints-dex-graph/src/main/java/com/tinkerpop/blueprints/impls/...
+    	//           dex/DexGraph.java
+        
+    	Value v = out == null ? new Value() : out;
+    	
+    	switch (type) {
+        case Boolean:
+            v.setBooleanVoid((Boolean) value);
+            break;
+        case Integer:
+            v.setIntegerVoid((Integer) value);
+            break;
+        case Long:
+            v.setLongVoid((Long) value);
+            break;
+        case String:
+            v.setStringVoid((String) value);
+            break;
+        case Double:
+            if (value instanceof Double) {
+                v.setDoubleVoid((Double) value);
+            } else if (value instanceof Float) {
+                v.setDoubleVoid(((Float) value).doubleValue());
+            }
+            break;
+        default:
+            throw new UnsupportedOperationException();
+    	}
+
+    	return v;
+	}
+	
+	
+	/**
+	 * Convert an Object to a Value
+	 * 
+	 * @param type the DEX data type
+	 * @param value the Object value
+	 * @return the DEX Value
+	 */
+	public static Value translateValue(DataType type, Object value) {
+    	return translateValue(type, value, null);
 	}
 	
 	
@@ -144,36 +231,26 @@ public class DexUtils {
 	 */
 	public static Objects getUsingIndex(final Graph graph, final Attribute adata, final Object value) {
     	
-    	// https://github.com/tinkerpop/blueprints/blob/master/...
-    	//           blueprints-dex-graph/src/main/java/com/tinkerpop/blueprints/impls/...
-    	//           dex/DexGraph.java
-        
-    	com.sparsity.dex.gdb.Value v = new com.sparsity.dex.gdb.Value();
-        
-    	switch (adata.getDataType()) {
-            case Boolean:
-                v.setBooleanVoid((Boolean) value);
-                break;
-            case Integer:
-                v.setIntegerVoid((Integer) value);
-                break;
-            case Long:
-                v.setLongVoid((Long) value);
-                break;
-            case String:
-                v.setStringVoid((String) value);
-                break;
-            case Double:
-                if (value instanceof Double) {
-                    v.setDoubleVoid((Double) value);
-                } else if (value instanceof Float) {
-                    v.setDoubleVoid(((Float) value).doubleValue());
-                }
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-        
+    	Value v = translateValue(adata.getDataType(), value);
         return graph.select(adata.getId(), com.sparsity.dex.gdb.Condition.Equal, v);
     }
+	
+	
+	/**
+	 * Get DEX attribute handle, creating it if necessary
+	 * 
+	 * @param graph the DEX graph
+	 * @param objectType the object type
+	 * @param key the key
+	 * @param dataType the data type (to be used if creating)
+	 * @param kind the attribute kind (to be used if creating)
+	 */
+	public static int getOrCreateAttributeHandle(Graph graph, int objectType, String key,
+			DataType dataType, AttributeKind kind) {
+		int attr = graph.findAttribute(objectType, key);
+		if (attr == Attribute.InvalidAttribute) {
+			attr = graph.newAttribute(objectType, key, dataType, kind);
+		}
+		return attr;
+	}
 }

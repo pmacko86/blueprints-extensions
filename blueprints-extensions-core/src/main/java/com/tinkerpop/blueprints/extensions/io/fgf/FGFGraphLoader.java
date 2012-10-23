@@ -14,6 +14,7 @@ import com.tinkerpop.blueprints.Features;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.KeyIndexableGraph;
 import com.tinkerpop.blueprints.TransactionalGraph;
+import com.tinkerpop.blueprints.TransactionalGraph.Conclusion;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
@@ -58,14 +59,14 @@ public class FGFGraphLoader {
 	 * 
 	 * @param outGraph the graph to populate with the data
 	 * @param file the input file
-	 * @param bufferSize the transaction buffer size
+	 * @param txBuffer the number of operations before a commit
 	 * @param indexAllProperties whether to index all properties
-	 * @param bulkLoad true to bulk-load the graph; false to use incremental load 
+	 * @param bulkLoad true to bulk-load the graph; false to use incremental load
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public static void load(Graph outGraph, File file, int bufferSize,
+	public static void load(Graph outGraph, File file, int txBuffer,
 			boolean indexAllProperties, boolean bulkLoad, GraphProgressListener listener)
 					throws IOException, ClassNotFoundException {
 		
@@ -100,10 +101,11 @@ public class FGFGraphLoader {
     		// Wrap the graph and start the loading process
     		
     		final Graph graph = bulkLoad && outGraph instanceof TransactionalGraph
-    				? BatchGraph.wrap(outGraph, bufferSize) : outGraph;
+    				? BatchGraph.wrap(outGraph, txBuffer) : outGraph;
 
-    		Loader l = new Loader(graph, reader, indexAllProperties, listener);
+    		Loader l = new Loader(graph, reader, txBuffer, indexAllProperties, listener);
     		reader.read(l);
+    		l.finish();
     		l = null;
     		
     		
@@ -145,6 +147,10 @@ public class FGFGraphLoader {
 		private long verticesLoaded;
 		private long edgesLoaded;
 		
+		private int txBuffer;
+		private int opsSinceCommit;
+		private boolean txEnabled;
+		
 		private boolean alreadyHasVertexIdIndex;
 		private boolean alreadyHasVertexLabelIndex;
 		private boolean createdVertexIdIndex;
@@ -156,14 +162,16 @@ public class FGFGraphLoader {
 		/**
 		 * Create an instance of class Loader
 		 * @param graph the graph
+		 * @param txBuffer the number of operations before a commit
 		 * @param reader the input file reader
 		 * @param indexAllProperties whether to index all properties
 		 * @param listener the progress listener
 		 */
-		public Loader(Graph graph, FGFReader reader, boolean indexAllProperties, GraphProgressListener listener) {
+		public Loader(Graph graph, FGFReader reader, int txBuffer, boolean indexAllProperties, GraphProgressListener listener) {
 			
 			this.graph = graph;
 			this.reader = reader;
+			this.txBuffer = txBuffer;
 			this.indexAllProperties = indexAllProperties;
 			this.listener = listener;
 			
@@ -175,6 +183,7 @@ public class FGFGraphLoader {
 			this.tempMap = new HashMap<String, Object>();
 			this.verticesLoaded = 0;
 			this.edgesLoaded = 0;
+			this.opsSinceCommit = 0;
 			
 			this.alreadyHasVertexIdIndex = false;
 			this.alreadyHasVertexLabelIndex = false;
@@ -200,6 +209,20 @@ public class FGFGraphLoader {
 			else {
 				preexistingVertexPropertyIndexes = new HashSet<String>();
 				preexistingEdgePropertyIndexes   = new HashSet<String>();
+			}
+			
+			this.txEnabled = graph instanceof TransactionalGraph
+					&& !(graph instanceof BatchGraph) && !(graph instanceof Neo4jBatchGraph);
+		}
+		
+		
+		/**
+		 * Finish loading
+		 */
+		public void finish() {
+			if (txEnabled) {
+				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				opsSinceCommit = 0;
 			}
 		}
 		
@@ -276,6 +299,7 @@ public class FGFGraphLoader {
 			Vertex v = graph.addVertex(a);
 			vertices[(int) id] = v;
 			verticesLoaded++;
+			opsSinceCommit++;
 			
 			
 			// Properties
@@ -285,12 +309,15 @@ public class FGFGraphLoader {
 				for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {
 					hasLabel = hasLabel || StringFactory.LABEL.equals(e.getKey().getName()); 
 					v.setProperty(e.getKey().getName(), e.getValue());
+					opsSinceCommit++;
 				}
 				if (!hasLabel && !"".equals(type.getName())) {
 					v.setProperty(StringFactory.LABEL, type.getName());
 					hasAdditionalLabel = true;
+					opsSinceCommit++;
 				}
 				v.setProperty(KEY_ORIGINAL_ID, (int) id);
+				opsSinceCommit++;
 			}
 			
 			if (graph instanceof KeyIndexableGraph) {
@@ -317,6 +344,14 @@ public class FGFGraphLoader {
 						}
 					}
 				}
+			}
+			
+			
+			// Periodically commit
+			
+			if (txEnabled && opsSinceCommit > txBuffer) {
+				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				opsSinceCommit = 0;
 			}
 			
 			
@@ -431,6 +466,7 @@ public class FGFGraphLoader {
 			
 			Edge e = graph.addEdge(a, t, h, type.getName());
 			edgesLoaded++;
+			opsSinceCommit++;
 			
 			
 			// Set properties
@@ -438,6 +474,7 @@ public class FGFGraphLoader {
 			if (!supplyPropertiesAsIds) {
 				for (Map.Entry<PropertyType, Object> p : properties.entrySet()) {
 					e.setProperty(p.getKey().getName(), p.getValue());
+					opsSinceCommit++;
 				}
 			}
 			
@@ -448,6 +485,14 @@ public class FGFGraphLoader {
 						((PropertyTypeAux) p.getKey().getAux()).edgeIndexCreated = true;
 					}
 				}
+			}
+			
+			
+			// Periodically commit
+			
+			if (txEnabled && opsSinceCommit > txBuffer) {
+				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				opsSinceCommit = 0;
 			}
 			
 			

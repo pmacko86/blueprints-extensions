@@ -111,7 +111,7 @@ public class FGFReader implements Closeable {
 		
 		for (int i = 0; i < propertyTypes.length; i++) {
 			String name = din.readUTF();
-			int type = din.readShort();
+			short type = din.readShort();
 			propertyTypes[i] = new PropertyType(i, name, type);
 		}
 	}
@@ -368,7 +368,7 @@ public class FGFReader implements Closeable {
 		
 		private int index;
 		private String name;
-		private int type;
+		private short type;
 		private Object aux;
 		
 		
@@ -378,7 +378,7 @@ public class FGFReader implements Closeable {
 		 * @param name the property name
 		 * @param type the property type
 		 */
-		private PropertyType(int index, String name, int type) {
+		private PropertyType(int index, String name, short type) {
 			this.index = index;
 			this.name = name;
 			this.type = type;
@@ -411,7 +411,7 @@ public class FGFReader implements Closeable {
 		 * 
 		 * @return the property type code
 		 */
-		public int getType() {
+		public short getType() {
 			return type;
 		}
 		
