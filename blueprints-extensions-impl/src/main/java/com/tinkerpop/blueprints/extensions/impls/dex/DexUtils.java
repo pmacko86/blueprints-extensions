@@ -253,4 +253,21 @@ public class DexUtils {
 		}
 		return attr;
 	}
+	
+	
+	/**
+	 * Find the attribute ID for each type in the array
+	 * 
+	 * @param graph the DEX graph
+	 * @param types the types array
+	 * @param key the attribute name
+	 * @return the array of attribute IDs
+	 */
+	public static int[] findAttributes(Graph graph, int[] types, String key) {
+		int[] r = new int[types.length];
+		for (int i = 0; i < types.length; i++) {
+			r[i] = graph.findAttribute(types[i], key);
+		}
+		return r;
+	}
 }
