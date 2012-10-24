@@ -438,6 +438,7 @@ public class FGFGraphLoader {
 						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
 						if (t == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + tail);
 						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + tail);
+						vertices[(int) tail] = t;
 					}
 					
 					if (h == null) {
@@ -448,6 +449,7 @@ public class FGFGraphLoader {
 						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
 						if (h == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + head);
 						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + head);
+						vertices[(int) head] = h;
 					}
 				}
 				finally {

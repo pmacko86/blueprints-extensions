@@ -357,8 +357,14 @@ public class DexFGFIncrementalLoader {
 			long t = vertices[(int) tail];
 			long h = vertices[(int) head];
 			
-			if (t == Objects.InvalidOID) t = findVertexById(tail);
-			if (h == Objects.InvalidOID) h = findVertexById(head);
+			if (t == Objects.InvalidOID) {
+				t = findVertexById(tail);
+				vertices[(int) tail] = t;
+			}
+			if (h == Objects.InvalidOID) {
+				h = findVertexById(head);
+				vertices[(int) head] = h;
+			}
 			
 			
 			// Create the relationship

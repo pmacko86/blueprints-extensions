@@ -160,6 +160,7 @@ public class Neo4jFGFIncrementalLoader {
 		 * Finish the loading process
 		 */
 		public void finish() {
+			tx.success();
 			tx.finish();
 			tx = null;
 			opsSinceCommit = 0;
@@ -202,7 +203,12 @@ public class Neo4jFGFIncrementalLoader {
 			Node n = graph.createNode();
 			vertices[(int) id] = n;
 			verticesLoaded++;
-			opsSinceCommit++;			
+			opsSinceCommit++;
+			
+			/*if (n.getId() == 0) {
+				System.err.println("\nWarning: Created node with ID " + n.getId()
+						+ " for " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + id);
+			}*/
 			
 			
 			// Properties
@@ -226,6 +232,7 @@ public class Neo4jFGFIncrementalLoader {
 			// Commit periodically
 			
 			if (opsSinceCommit >= txBuffer) {
+				tx.success();
 				tx.finish();
 				tx = this.graph.beginTx();
 				opsSinceCommit = 0;
@@ -252,6 +259,7 @@ public class Neo4jFGFIncrementalLoader {
 			if (!originalVertexIdIndexCreated) {
 				if (!preexistingVertexPropertyIndexes.contains(FGFGraphLoader.KEY_ORIGINAL_ID)) {
 					if (tx != null) {
+						tx.success();
 						tx.finish();
 						tx = null;
 					}
@@ -263,6 +271,7 @@ public class Neo4jFGFIncrementalLoader {
 			if (indexAllProperties && hasAdditionalVertexLabel && !additionalVertexLabelIndexCreated) {
 				if (!preexistingVertexPropertyIndexes.contains(StringFactory.LABEL)) {
 					if (tx != null) {
+						tx.success();
 						tx.finish();
 						tx = null;
 					}
@@ -277,6 +286,7 @@ public class Neo4jFGFIncrementalLoader {
 					if (x.vertexKeyUsed && !x.vertexIndexCreated) {
 						if (!preexistingVertexPropertyIndexes.contains(t.getName())) {
 							if (tx != null) {
+								tx.success();
 								tx.finish();
 								tx = null;
 							}
@@ -333,6 +343,7 @@ public class Neo4jFGFIncrementalLoader {
 					if (i instanceof IndexHits) ((IndexHits<?>) i).close();
 					if (t == null) throw new RuntimeException("Cannot find vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + tail);
 					if (b) throw new RuntimeException("There is more than one vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + tail);
+					vertices[(int) tail] = t;
 				}
 				
 				if (h == null) {
@@ -343,15 +354,26 @@ public class Neo4jFGFIncrementalLoader {
 					if (i instanceof IndexHits) ((IndexHits<?>) i).close();
 					if (h == null) throw new RuntimeException("Cannot find vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + head);
 					if (b) throw new RuntimeException("There is more than one vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + head);
+					vertices[(int) head] = h;
 				}
 			}
 			
 			
 			// Create the relationship
 			
-			Relationship r = t.createRelationshipTo(h, relationshipType);
-			edgesLoaded++;
-			opsSinceCommit++;
+			Relationship r;
+			try {
+				r = t.createRelationshipTo(h, relationshipType);
+				edgesLoaded++;
+				opsSinceCommit++;
+			}
+			catch (org.neo4j.graphdb.NotFoundException e) {
+				System.err.println("\nError while creating a relationship: " + e.getMessage());
+				System.err.println("  Tail: node[" + t.getId() + "], " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + tail);
+				System.err.println("  Head: node[" + h.getId() + "], " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + head);
+				System.err.println("  Type: " + relationshipType);
+				throw e;
+			}
 			
 			
 			// Add properties
@@ -366,6 +388,7 @@ public class Neo4jFGFIncrementalLoader {
 			// Commit periodically
 			
 			if (opsSinceCommit >= txBuffer) {
+				tx.success();
 				tx.finish();
 				tx = this.graph.beginTx();
 				opsSinceCommit = 0;

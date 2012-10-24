@@ -23,9 +23,16 @@ SOURCES := $(shell ls -1 *.xml | grep -v common)
 TARGETS_FGF    := $(subst .xml,.fgf,$(SOURCES))
 TARGETS_SPLIT  := $(subst .xml,-a.fgf,$(SOURCES)) $(subst .xml,-b.fgf,$(SOURCES))
 TARGETS_DEXCSV := $(subst .fgf,.fgf-dex-csvs,$(TARGETS_FGF) $(TARGETS_SPLIT))
+TARGETS        := $(TARGETS_FGF) $(TARGETS_SPLIT) $(TARGETS_DEXCSV)
 
-TARGETS    := $(TARGETS_FGF) $(TARGETS_SPLIT) $(TARGETS_DEXCSV)
-TARGETS_1K := $(filter barabasi_1k_%,$(TARGETS))
+
+# Specialized / filtered targets
+
+TARGETS_1K   := $(filter barabasi_1k_%,$(TARGETS))
+TARGETS_10K  := $(filter barabasi_10k_%,$(TARGETS))
+TARGETS_100K := $(filter barabasi_100k_%,$(TARGETS))
+TARGETS_1M   := $(filter barabasi_1m_%,$(TARGETS))
+TARGETS_10M  := $(filter barabasi_10m_%,$(TARGETS))
 
 
 #
@@ -34,12 +41,16 @@ TARGETS_1K := $(filter barabasi_1k_%,$(TARGETS))
 
 all: $(TARGETS)
 
-1k: $(TARGETS_1K)
-
 clean:
 	rm -rf *.fgf *.fgf-dex-csvs
 
-.PHONY: all 1k clean
+1k  : $(TARGETS_1K)
+10k : $(TARGETS_10K)
+100k: $(TARGETS_100K)
+1m  : $(TARGETS_1M)
+10m : $(TARGETS_10M)
+
+.PHONY: all clean 1k 10k 100k 1m 10m
 
 
 #
