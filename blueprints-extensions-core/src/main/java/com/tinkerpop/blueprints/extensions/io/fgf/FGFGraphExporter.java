@@ -30,7 +30,7 @@ public class FGFGraphExporter {
 	 * @throws IOException on I/O or parse error
 	 */
 	public static void export(Graph graph, File file) throws IOException {
-		export(graph, file, null);
+		export(graph, file, false, null);
 	}
 	
 	
@@ -39,10 +39,12 @@ public class FGFGraphExporter {
 	 * 
 	 * @param graph the input graph
 	 * @param file the output file
+	 * @param keepOriginalId whether to keep the original ID property
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 */
-	public static void export(Graph graph, File file, GraphProgressListener listener) throws IOException {
+	public static void export(Graph graph, File file, boolean keepOriginalId, GraphProgressListener listener)
+			throws IOException {
 		
 		// Open the writer
 		
@@ -64,6 +66,7 @@ public class FGFGraphExporter {
 		for (Vertex v : vertices) {
 			properties.clear();
 			for (String k : v.getPropertyKeys()) {
+				if (!keepOriginalId && k.equals(FGFGraphLoader.KEY_ORIGINAL_ID)) continue;
 				properties.put(k, v.getProperty(k));
 			}
 			vertexMap.put(v.getId(), writer.writeVertex("", properties));
