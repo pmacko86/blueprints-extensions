@@ -8,6 +8,8 @@ import com.sparsity.dex.gdb.Graph;
 import com.sparsity.dex.gdb.Objects;
 import com.sparsity.dex.gdb.Value;
 import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 
 
@@ -267,6 +269,58 @@ public class DexUtils {
 		int[] r = new int[types.length];
 		for (int i = 0; i < types.length; i++) {
 			r[i] = graph.findAttribute(types[i], key);
+		}
+		return r;
+	}
+	
+	
+	/**
+	 * Translate a Blueprints vertex to a DEX vertex
+	 * 
+	 * @param vertex the Blueprints vertex
+	 * @return the DEX vertex
+	 */
+	public static long translateVertex(Vertex vertex) {
+		return ((Long) vertex.getId()).longValue();
+	}
+	
+	
+	/**
+	 * Translate an array of Blueprints vertices to DEX vertices
+	 * 
+	 * @param vertices the Blueprints vertices
+	 * @return the DEX vertices
+	 */
+	public static long[] translateVertices(Vertex[] vertices) {
+		long[] r = new long[vertices.length];
+		for (int i = 0; i < vertices.length; i++) {
+			r[i] = ((Long) vertices[i].getId()).longValue();
+		}
+		return r;
+	}
+	
+	
+	/**
+	 * Translate a Blueprints edge to a DEX edge
+	 * 
+	 * @param vertex the Blueprints edge
+	 * @return the DEX edge
+	 */
+	public static long translateEdge(Edge edge) {
+		return ((Long) edge.getId()).longValue();
+	}
+	
+	
+	/**
+	 * Translate an array of Blueprints edges to DEX edges
+	 * 
+	 * @param vertices the Blueprints edges
+	 * @return the DEX edges
+	 */
+	public static long[] translateEdges(Edge[] edges) {
+		long[] r = new long[edges.length];
+		for (int i = 0; i < edges.length; i++) {
+			r[i] = ((Long) edges[i].getId()).longValue();
 		}
 		return r;
 	}
