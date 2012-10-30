@@ -2,6 +2,7 @@ package com.tinkerpop.blueprints.extensions.impls.dex;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.NoSuchElementException;
 
 import com.sparsity.dex.gdb.Attribute;
@@ -9,6 +10,7 @@ import com.sparsity.dex.gdb.AttributeList;
 import com.sparsity.dex.gdb.DexProperties;
 import com.sparsity.dex.gdb.Graph;
 import com.sparsity.dex.gdb.ObjectType;
+import com.sparsity.dex.gdb.Session;
 import com.sparsity.dex.gdb.StringList;
 import com.sparsity.dex.gdb.Type;
 import com.sparsity.dex.gdb.TypeList;
@@ -33,6 +35,10 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	 */
 	public static final long ID_STEP = 1024;
 	
+	
+	/// The session
+	private Session session;
+	
 
 	/**
 	 * Create an instance of ExtendedDexGraph
@@ -49,8 +55,25 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	 * Initialize the object
 	 */
 	private void init() {
+		try {
+			Method m = DexGraph.class.getDeclaredMethod("getRawSession");
+			m.setAccessible(true);
+			session = (Session) m.invoke(this);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
-   
+	
+	
+	/**
+	 * Return the session
+	 * 
+	 * @return the session
+	 */
+	public Session getSession() {
+		return session;
+	}
+	
 	
 	/**
 	 * Return the number of vertices
