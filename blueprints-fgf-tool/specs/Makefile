@@ -32,6 +32,7 @@ TARGETS_1K   := $(filter barabasi_1k_%,$(TARGETS))
 TARGETS_10K  := $(filter barabasi_10k_%,$(TARGETS))
 TARGETS_100K := $(filter barabasi_100k_%,$(TARGETS))
 TARGETS_1M   := $(filter barabasi_1m_%,$(TARGETS))
+TARGETS_2M   := $(filter barabasi_2m_%,$(TARGETS))
 TARGETS_10M  := $(filter barabasi_10m_%,$(TARGETS))
 
 
@@ -48,9 +49,10 @@ clean:
 10k : $(TARGETS_10K)
 100k: $(TARGETS_100K)
 1m  : $(TARGETS_1M)
+2m  : $(TARGETS_2M)
 10m : $(TARGETS_10M)
 
-.PHONY: all clean 1k 10k 100k 1m 10m
+.PHONY: all clean 1k 10k 100k 1m 2m 10m
 
 
 #
