@@ -95,11 +95,11 @@ public class FGFGraphExporter {
 					vertexMap.get(e.getVertex(Direction.OUT).getId()).longValue(),
 					e.getLabel(), properties);
 			
-			if (listener != null && (numVertices % 10000) == 0) {
+			if (listener != null && (numEdges % 10000) == 0) {
 				listener.graphProgress(numVertices, numEdges);
 			}
 			
-			numVertices++;
+			numEdges++;
 		}
 		if (edges instanceof CloseableIterable<?>) {
 			((CloseableIterable<Edge>) edges).close();
