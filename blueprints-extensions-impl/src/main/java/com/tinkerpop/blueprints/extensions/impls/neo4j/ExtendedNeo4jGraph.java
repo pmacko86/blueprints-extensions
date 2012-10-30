@@ -207,6 +207,14 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
     public int getTotalCacheSize() {
     	throw new UnsupportedOperationException();
     }
+    
+    
+    /**
+     * Start a transaction (unless one is already running)
+     */
+    public void startTransaction() {
+    	autoStartTransaction();
+    }
 
 
     @Override
