@@ -47,6 +47,7 @@ public class FGFTool {
 		System.err.println("  generate      Generate a graph and save it as .fgf");
 		System.err.println("  graphml2fgf   Convert a .graphml file to a .fgf file");
 		System.err.println("  help          Print this help");
+		System.err.println("  pairs2fgf     Convert a file with node pairs to a .fgf file");
 		System.err.println("  split         Split a .fgf file into two files");
 		System.err.println("  stat          Print graph statistics of a .fgf file");
 	}
@@ -107,6 +108,13 @@ public class FGFTool {
 	    	}
 	    	
 	    	
+	    	// Tool: pairs2fgf
+	    	
+	    	if ("pairs2fgf".equals(tool)) {
+	    		System.exit(Pairs2FGF.run(tool, toolArgs));
+	    	}
+	    	
+	    	
 	    	// Tool: split
 	    	
 	    	if ("split".equals(tool)) {
@@ -154,7 +162,11 @@ public class FGFTool {
 		OptionSet options;
 		OptionParser parser = new OptionParser();
     	
+		parser.accepts("edges-only");
 		parser.accepts("help");
+		parser.accepts("help");
+		parser.accepts("nodes-only");
+		parser.accepts("vertices-only");
 		
 		try {
 			options = parser.parse(args);
@@ -172,12 +184,26 @@ public class FGFTool {
 		if (options.has("help") || l.size() != 1) {
 			System.err.println(PROGRAM_LONG_NAME);
 			System.err.println("");
-			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.graphml");
+			System.err.println("Usage: " + PROGRAM_NAME + " " + tool + " [OPTIONS] INPUT.fgf");
 			System.err.println("");
 			System.err.println("Options:");
+			System.err.println("  --edges-only     Print only edges");
 			System.err.println("  --help           Print this help");
+			System.err.println("  --nodes-only     Print only vertices (an alias for --vertices-only)");
+			System.err.println("  --vertices-only  Print only vertices");
 			return options.has("help") ? 0 : 1;
 		}
+		
+		boolean verticesOnly = options.has("nodes-only") || options.has("vertices-only");
+		boolean edgesOnly = options.has("edges-only");
+		if (verticesOnly && edgesOnly) {
+			System.err.println("Error: Cannot combine --edges-only with " 
+					+ (options.has("nodes-only") ? "--nodes-only" :  "--vertices-only"));
+			return 1;
+		}
+		
+		final boolean printVertices = (!verticesOnly && !edgesOnly) || verticesOnly;
+		final boolean printEdges    = (!verticesOnly && !edgesOnly) ||    edgesOnly;
 		
 		
 		// Parse the command-line options: Non-optional arguments
@@ -219,9 +245,11 @@ public class FGFTool {
 				@Override
 				public void vertex(long id, VertexType type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Node " + id + ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
-					printProperties(properties);
-					System.out.println();
+					if (printVertices) {
+						System.out.print("Node " + id + ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
+						printProperties(properties);
+						System.out.println();
+					}
 				}
 				
 				@Override
@@ -239,10 +267,12 @@ public class FGFTool {
 				@Override
 				public void edge(long id, long head, long tail, EdgeType type,
 						Map<PropertyType, Object> properties) {
-					System.out.print("Edge " + id + ": " + tail + " ---> " + head
-							+ ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
-					printProperties(properties);
-					System.out.println();
+					if (printEdges) {
+						System.out.print("Edge " + id + ": " + tail + " ---> " + head
+								+ ", type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
+						printProperties(properties);
+						System.out.println();
+					}
 				}
 			});
 		} catch (ClassNotFoundException e) {
