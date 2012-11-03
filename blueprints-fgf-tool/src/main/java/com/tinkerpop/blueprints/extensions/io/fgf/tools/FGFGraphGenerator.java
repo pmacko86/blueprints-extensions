@@ -1,6 +1,8 @@
 package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -237,6 +239,9 @@ public class FGFGraphGenerator {
     	if ("barabasi".equalsIgnoreCase(specs.getModelName())) {
     		barabasi(specs);
     	}
+    	else if ("pairs-file".equalsIgnoreCase(specs.getModelName())) {
+    		pairsFile(specs);
+    	}
     	else {
     		throw new IllegalArgumentException("Unknown model " + specs.getModelName());
     	}
@@ -419,5 +424,151 @@ public class FGFGraphGenerator {
 		
 		if (verbose) l.graphProgress((int) vertices, (int) heads.length);
 		if (verbose) System.err.println();
+    }
+
+    
+    /**
+     * Load the graph topology from a pairs file
+     * 
+     * @param specs the generator specs
+     */
+    private static void pairsFile(FGFGraphGeneratorSpecs specs) {
+    	
+       	assert specs.getModelName().equalsIgnoreCase("pairs-file");
+       	
+    	
+    	// Get the arguments
+    	
+    	if (specs.getModelParameters().size() != 1) {
+    		throw new RuntimeException("Error: Invalid number of model arguments (please use --help for help).");
+    	}
+    	
+    	String fileName = specs.getModelParameters().get("file");
+    	if (fileName == null) {
+    		throw new RuntimeException("Error: No \"file\" is specified.");
+    	}
+    	
+    	File file = new File(fileName);
+    	if (!file.exists()) {
+    		throw new RuntimeException("Error: The specified pairs file does not exist.");
+    	}
+    	
+    	
+    	// Read the file
+    	
+    	try {
+			
+    		BufferedReader in = new BufferedReader(new FileReader(file));
+			
+    		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
+			if (verbose) System.err.print("Importing :");
+			if (verbose) l.graphProgress((int) 0, (int) 0);
+			
+			
+			// Begin the main loop
+			
+			String line;
+			String separator = "[ \t,]+";
+			int lineNo = 0;
+			int numVertices = 0;
+			int numEdges = 0;
+			
+			int[] nodes = new int[10 * 1000000];
+			for (int i = 0; i < nodes.length; i++) nodes[i] = -1;
+			
+			ArrayList<int[]> edges = new ArrayList<int[]>();
+			
+			while ((line = in.readLine()) != null) {
+				
+				
+				// Preprocess the line, skipping empty lines and commented-out lines
+				
+				lineNo++;
+				
+				int contentStart;
+				for (contentStart = 0; contentStart < line.length(); contentStart++) {
+					if (!Character.isWhitespace(line.charAt(contentStart))) {
+						if (contentStart > 0) line = line.substring(contentStart);
+						break;
+					}
+				}
+				
+				if (line.length() == 0 || line.startsWith("#")) continue;
+				
+				
+				// Parse the pair
+				
+				String[] strFields = line.split(separator);
+				if (strFields.length != 2) {
+					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- invalid number of fields");
+				}
+				
+				int from = Integer.parseInt(strFields[0]);
+				int to   = Integer.parseInt(strFields[1]);
+				
+				if (from < 0 || to < 0) {
+					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- a negative node ID");
+				}
+				
+				
+				// Look up the nodes in the translation dictionary, creating them if they are not there
+				
+				if (Math.max(from, to) >= nodes.length) {
+					int m = Math.max(from, to);
+					int newSize = m < Integer.MAX_VALUE / 4 ? 2 * m : Integer.MAX_VALUE / 2;
+					if (m >= newSize) {
+						throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- too large node ID");
+					}
+					int[] a = new int[newSize];
+					for (int i = nodes.length; i < newSize; i++) {
+						a[i] = -1;
+					}
+					System.arraycopy(nodes, 0, a, 0, nodes.length);
+					nodes = a;
+					System.runFinalization();
+					System.gc();
+				}
+				
+				if (nodes[from] < 0) nodes[from] = numVertices++;
+				if (nodes[to  ] < 0) nodes[to  ] = numVertices++;
+				
+				
+				// Create the edge
+				
+				edges.add(new int[] { nodes[to] /* head */, nodes[from] /* tail */ });
+				numEdges++;
+				
+				
+				// Listener
+				
+				if (verbose) {
+					if ((numVertices + numEdges) % 100000 == 0) {
+						l.graphProgress(numVertices, numEdges);
+					}
+				}
+			}
+			
+			
+			// Finalize
+			
+			if (verbose) l.graphProgress(numVertices, numEdges);
+			if (verbose) System.err.println();
+			
+			in.close();
+			
+			heads = new int[edges.size()];
+			tails = new int[edges.size()];
+			vertices = numVertices;
+			
+			int i = 0;
+			for (int[] e : edges) {
+				heads[i] = e[0];
+				tails[i] = e[1];
+				i++;
+			}
+    	}
+    	catch (IOException e) {
+    		throw new RuntimeException(e);
+    	}
     }
 }

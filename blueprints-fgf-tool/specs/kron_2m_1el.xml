@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graph-specs output="kron_2m_1el.fgf">
+	<model name="pairs-file">
+		<file>kron_2m.txt</file>
+	</model>
+	<edges>
+		<labels>
+			<label>friend</label>
+		</labels>
+	</edges>
+	<include file="common_properties.xml" />
+</graph-specs>
+
