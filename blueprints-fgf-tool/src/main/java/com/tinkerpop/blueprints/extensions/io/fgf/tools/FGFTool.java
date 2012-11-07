@@ -3,6 +3,7 @@ package com.tinkerpop.blueprints.extensions.io.fgf.tools;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -498,12 +499,20 @@ public class FGFTool {
     	// Tool
     	
      	FGFReader r = new FGFReader(new File(inputFile));
+     	
+    	final long[] totalEdges = new long[] { 0 };
+     	
+     	final long minVertexId = r.getInitialVertexId();
+     	final long maxVertexId = minVertexId + r.getNumberOfVertices() - 1;
+     	final HashSet<Long> externalVertexReferences = new HashSet<Long>();
+     	final long[] numExternalVertexReferences = new long[] { 0 };
+     	
     	try {
 			r.read(new FGFReaderHandler() {
 				
 				@Override
 				public void vertexTypeStart(VertexType type, long count) {
-					System.out.println("" + count + " node" + (count == 1 ? "" : "s")
+					System.out.println("" + count + " " + (count == 1 ? "vertex" : "vertices")
 							+ " of type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
 				}
 				
@@ -524,6 +533,7 @@ public class FGFTool {
 				public void edgeTypeStart(EdgeType type, long count) {
 					System.out.println("" + count + " edge" + (count == 1 ? "" : "s")
 							+ " of type " + ("".equals(type.getName()) ? "<default>" : type.getName()));
+					totalEdges[0] += count;
 				}
 				
 				@Override
@@ -532,12 +542,28 @@ public class FGFTool {
 				
 				@Override
 				public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+					if (head < minVertexId || head > maxVertexId) {
+						externalVertexReferences.add(head);
+						numExternalVertexReferences[0]++;
+					}
+					if (tail < minVertexId || tail > maxVertexId) {
+						externalVertexReferences.add(tail);
+						numExternalVertexReferences[0]++;
+					}
 				}
 			});
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
     	r.close();
+    	
+    	System.out.println("" + totalEdges[0] + " edge" + (totalEdges[0] == 1 ? "" : "s") + " total");
+    	System.out.println("" + numExternalVertexReferences[0] + " reference"
+    			+ (numExternalVertexReferences[0] == 1 ? "" : "s")
+    			+ " to " + externalVertexReferences.size() + " "
+    			+ (externalVertexReferences.size() == 1 ? "vertex" : "vertices")
+    			+ " that " + (externalVertexReferences.size() == 1 ? "is" : "are")
+    			+ " not in this file"); 
 
     	return 0;
     }
