@@ -2,7 +2,7 @@ package com.tinkerpop.blueprints.extensions.io.fgf;
 
 
 /**
- * Fast Graph Format: Constants
+ * Fast Graph Format: Type Constants
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */

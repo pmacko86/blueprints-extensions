@@ -28,7 +28,7 @@ public class GraphML2FGF {
      * @param fgfWriter          the FGF writer
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
-    public static void convert(final InputStream graphMLInputStream, final FGFWriter fgfWriter) throws IOException {
+    public static void convert(final InputStream graphMLInputStream, final FGFFileWriter fgfWriter) throws IOException {
     	convert(graphMLInputStream, fgfWriter, null, null, null, null);
     }
 	
@@ -41,7 +41,7 @@ public class GraphML2FGF {
      * @param progressListener   the progress listener
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
-    public static void convert(final InputStream graphMLInputStream, final FGFWriter fgfWriter,
+    public static void convert(final InputStream graphMLInputStream, final FGFFileWriter fgfWriter,
     		GraphProgressListener progressListener) throws IOException {
     	convert(graphMLInputStream, fgfWriter, progressListener, null, null, null);
     }
@@ -58,7 +58,7 @@ public class GraphML2FGF {
      * @param edgeLabelKey       if the label of an edge is a &lt;data/&gt; property, fetch it from the data property.
      * @throws IOException thrown when the GraphML data is not correctly formatted
      */
-    public static void convert(final InputStream graphMLInputStream, final FGFWriter fgfWriter,
+    public static void convert(final InputStream graphMLInputStream, final FGFFileWriter fgfWriter,
     		GraphProgressListener progressListener,
     		String vertexIdKey, String edgeIdKey, String edgeLabelKey) throws IOException {
 
@@ -134,14 +134,14 @@ public class GraphML2FGF {
     					// Automatically create vertices if they do not already exist
 
     					if (null == edgeOutVertex) {
-    						edgeOutVertex = fgfWriter.writeVertex("", null);
+    						edgeOutVertex = fgfWriter.writeVertex(null);
     						vertexMap.put(outVertexId, edgeOutVertex);
     						if (vertexIdKey != null)
     							// Default to standard ID system (in case no mapped ID is found later)
     							vertexMappedIdMap.put(outVertexId, outVertexId);
     					}
     					if (null == edgeInVertex) {
-    						edgeInVertex = fgfWriter.writeVertex("", null);
+    						edgeInVertex = fgfWriter.writeVertex(null);
     						vertexMap.put(inVertexId, edgeInVertex);
     						if (vertexIdKey != null)
     							// Default to standard ID system (in case no mapped ID is found later)
@@ -183,7 +183,7 @@ public class GraphML2FGF {
 
     				if (elementName.equals(GraphMLTokens.NODE)) {
     					
-    					vertexLongId = fgfWriter.writeVertex("", vertexProps);
+    					vertexLongId = fgfWriter.writeVertex(vertexProps);
        					vertexMap.put(vertexId, vertexLongId);
     					numVertices++;
  
@@ -201,7 +201,7 @@ public class GraphML2FGF {
 
     				} else if (elementName.equals(GraphMLTokens.EDGE)) {
     					
-    					fgfWriter.writeEdge(edgeInVertex /* head/target */, edgeOutVertex /* tail/source */, edgeLabel, edgeProps);
+    					fgfWriter.writeEdge(edgeOutVertex /* tail/source */, edgeInVertex /* head/target */, edgeLabel, edgeProps);
     					numEdges++;
 
     					edgeId = null;

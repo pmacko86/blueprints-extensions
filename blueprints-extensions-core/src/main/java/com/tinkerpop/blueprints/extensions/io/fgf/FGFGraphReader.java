@@ -16,11 +16,10 @@ import com.tinkerpop.blueprints.KeyIndexableGraph;
 import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.TransactionalGraph.Conclusion;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
@@ -28,56 +27,134 @@ import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
 
 
 /**
- * Fast Graph Format: Blueprints Graph loader
+ * Fast Graph Format: Blueprints Graph Reader
  * 
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public class FGFGraphLoader {
+public class FGFGraphReader {
+	
+	private final Graph graph;
+	private boolean bulkLoad = true;
+	private boolean createOriginalIdProperty = false;
+	private GraphProgressListener listener = null;
+	
 	
 	/**
-	 * The key for the original FGF node ID
-	 */
-	public static final String KEY_ORIGINAL_ID = "_original_id";
-	
-	
-	/**
-	 * Load to an instance of a Graph
+	 * Create an instance of class FGFGraphReader
 	 * 
-	 * @param outGraph the graph to populate with the data
-	 * @param file the input file
-	 * @param bufferSize the transaction buffer size
-	 * @throws IOException on I/O or parse error
-	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 * @param graph the graph to populate with the data
 	 */
-	public static void loadTo(Graph outGraph, File file, int bufferSize) throws IOException, ClassNotFoundException {
-		load(outGraph, file, bufferSize, false, true, null);
+	public FGFGraphReader(final Graph graph) {
+		this.graph = graph;
 	}
 	
 	
 	/**
-	 * Load to an instance of a Graph and optionally index all property keys
+	 * Set whether to use the bulk-load settings when loading the graph. Use
+	 * this only if the supplied instance of Graph is empty, and the FGF file's
+	 * initial vertex and edge IDs are both zero.
 	 * 
-	 * @param outGraph the graph to populate with the data
+	 * @param bulkLoad true to bulk-load the graph; false to use incremental load
+	 */
+	public void setBulkLoad(final boolean bulkLoad) {
+		this.bulkLoad = bulkLoad;
+	}
+	
+	
+	/**
+	 * Set whether to create the FGFConstants.KEY_ORIGINAL_ID property ("_original_id")
+	 * which contains the original ID of each vertex in its FGF file. This is required
+	 * to incrementally load a graph using a FGF file.
+	 * 
+	 * @param createOriginalIdProperty true to create the FGFConstants.KEY_ORIGINAL_ID property
+	 */
+	public void setCreateOriginalIdProperty(final boolean createOriginalIdProperty) {
+		this.createOriginalIdProperty = createOriginalIdProperty;
+	}
+	
+	
+	/**
+	 * Load to the instance of Graph
+	 * 
+	 * @param file the input file
+	 * @throws IOException on I/O or parse error
+	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 */
+	public void inputGraph(final File file)
+					 throws IOException, ClassNotFoundException {
+		inputGraph(graph, file, 1000, bulkLoad, createOriginalIdProperty, listener);
+	}
+	
+	
+	/**
+	 * Load to the instance of Graph
+	 * 
+	 * @param file the input file
+	 * @param txBuffer the transaction buffer size
+	 * @throws IOException on I/O or parse error
+	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 */
+	public void inputGraph(final File file, final int txBuffer)
+					 throws IOException, ClassNotFoundException {
+		inputGraph(graph, file, txBuffer, bulkLoad, createOriginalIdProperty, listener);
+	}
+	
+	
+	/**
+	 * Load to an instance of Graph
+	 * 
+	 * @param graph the graph to populate with the data
+	 * @param file the input file
+	 * @throws IOException on I/O or parse error
+	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 */
+	public static void inputGraph(final Graph graph, final File file)
+					 throws IOException, ClassNotFoundException {
+		inputGraph(graph, file, 1000, true, false, null);
+	}
+	
+	
+	/**
+	 * Load to an instance of Graph
+	 * 
+	 * @param graph the graph to populate with the data
+	 * @param file the input file
+	 * @param txBuffer the transaction buffer size
+	 * @throws IOException on I/O or parse error
+	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
+	 */
+	public static void inputGraph(final Graph graph, final File file,
+			 final int txBuffer)
+					 throws IOException, ClassNotFoundException {
+		inputGraph(graph, file, txBuffer, true, false, null);
+	}
+	
+	
+	/**
+	 * Load to an instance of Graph and optionally index all property keys
+	 * 
+	 * @param graph the graph to populate with the data
 	 * @param file the input file
 	 * @param txBuffer the number of operations before a commit
-	 * @param indexAllProperties whether to index all properties
 	 * @param bulkLoad true to bulk-load the graph; false to use incremental load
+	 * @param createOriginalIdProperty true to create the FGFConstants.KEY_ORIGINAL_ID property
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public static void load(Graph outGraph, File file, int txBuffer,
-			boolean indexAllProperties, boolean bulkLoad, GraphProgressListener listener)
+	public static void inputGraph(final Graph graph, final File file, final int txBuffer,
+			final boolean bulkLoad, final boolean createOriginalIdProperty,
+			final GraphProgressListener listener)
 					throws IOException, ClassNotFoundException {
 		
 		// Open the reader
 		
-		FGFReader reader = new FGFReader(file);
+		FGFFileReader reader = new FGFFileReader(file);
 		
 		
 		// Check whether the input file and the settings are compatible with bulk-load, if it is enabled
 		
-		if (bulkLoad || outGraph instanceof Neo4jBatchGraph) {
+		if (bulkLoad || graph instanceof Neo4jBatchGraph) {
 			if (reader.getInitialVertexId() != 0) {
 				reader.close();
 				throw new IOException("The FGF file is not bulk-loadable: the initial vertex ID is not 0");
@@ -89,52 +166,42 @@ public class FGFGraphLoader {
 			}
 		}
 		
-		
-		// Initialize
-		
-		if (bulkLoad && outGraph instanceof BulkloadableGraph) {
-			((BulkloadableGraph) outGraph).startBulkLoad();
+		if (!bulkLoad && !createOriginalIdProperty) {
+			reader.close();
+			throw new IOException("The use of the " + FGFConstants.KEY_ORIGINAL_ID + " property is required for incremental load");
 		}
+		
+		
+		// Wrap the graph and start the loading process
+		
+		final Graph wrappedGraph = bulkLoad && graph instanceof TransactionalGraph
+				? BatchGraph.wrap(graph, txBuffer) : graph;
 
-    	try {
-    		
-    		// Wrap the graph and start the loading process
-    		
-    		final Graph graph = bulkLoad && outGraph instanceof TransactionalGraph
-    				? BatchGraph.wrap(outGraph, txBuffer) : outGraph;
-
-    		Loader l = new Loader(graph, reader, txBuffer, indexAllProperties, listener);
-    		reader.read(l);
-    		l.finish();
-    		l = null;
-    		
-    		
-    		// Finish
-    		
-			if (listener != null) {
-				listener.graphProgress((int) reader.getNumberOfVertices(),
-						(int) reader.getNumberOfEdges());
-			}
+		Loader l = new Loader(wrappedGraph, reader, txBuffer, false /* do not index all properties */,
+				createOriginalIdProperty, listener);
+		reader.read(l);
+		l.finish();
+		l = null;
+		
+		
+		// Finish
+		
+		if (listener != null) {
+			listener.graphProgress((int) reader.getNumberOfVertices(),
+					(int) reader.getNumberOfEdges());
 		}
-    	finally {
-    		
-    		// Finalize
-    		
-    		if (bulkLoad && outGraph instanceof BulkloadableGraph) {
-    			((BulkloadableGraph) outGraph).stopBulkLoad();
-    		}
-    	}
 	}
 	
 	
 	/**
 	 * The actual graph loader
 	 */
-	private static class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFFileReaderHandler {
 		
 		private Graph graph;
-		private FGFReader reader;
+		private FGFFileReader reader;
 		private boolean indexAllProperties;
+		private boolean createOriginalIdProperty;
 		private GraphProgressListener listener;
 		
 		@SuppressWarnings("unused")
@@ -161,18 +228,23 @@ public class FGFGraphLoader {
 		
 		/**
 		 * Create an instance of class Loader
+		 * 
 		 * @param graph the graph
 		 * @param txBuffer the number of operations before a commit
 		 * @param reader the input file reader
 		 * @param indexAllProperties whether to index all properties
+		 * @param createOriginalIdProperty true to create the KEY_ORIGINAL_ID property
 		 * @param listener the progress listener
 		 */
-		public Loader(Graph graph, FGFReader reader, int txBuffer, boolean indexAllProperties, GraphProgressListener listener) {
+		public Loader(Graph graph, FGFFileReader reader, int txBuffer,
+				boolean indexAllProperties, boolean createOriginalIdProperty,
+				GraphProgressListener listener) {
 			
 			this.graph = graph;
 			this.reader = reader;
 			this.txBuffer = txBuffer;
 			this.indexAllProperties = indexAllProperties;
+			this.createOriginalIdProperty = createOriginalIdProperty;
 			this.listener = listener;
 			
 			this.features = graph.getFeatures();
@@ -196,12 +268,12 @@ public class FGFGraphLoader {
 				preexistingVertexPropertyIndexes = g.getIndexedKeys(Vertex.class);
 				preexistingEdgePropertyIndexes   = g.getIndexedKeys(Edge.class);
 				
-				if (preexistingVertexPropertyIndexes.contains(KEY_ORIGINAL_ID)) {
+				if (preexistingVertexPropertyIndexes.contains(FGFConstants.KEY_ORIGINAL_ID)) {
 					alreadyHasVertexIdIndex = true;
 					createdVertexIdIndex    = true;
 				}
 				
-				if (preexistingVertexPropertyIndexes.contains(KEY_ORIGINAL_ID)) {
+				if (preexistingVertexPropertyIndexes.contains(FGFConstants.KEY_ORIGINAL_ID)) {
 					alreadyHasVertexLabelIndex = true;
 					createdVertexLabelIndex    = true;
 				}
@@ -256,10 +328,12 @@ public class FGFGraphLoader {
 		public void vertexTypeStart(VertexType type, long count) {
 			
 			if (graph instanceof DexGraph) {
-				((DexGraph) graph).label.set("".equals(type.getName()) ? DexGraph.DEFAULT_DEX_VERTEX_LABEL : type.getName());
+				((DexGraph) graph).label.set(FGFFileWriter.DEFAULT_VERTEX_TYPE.equals(type.getName())
+						? DexGraph.DEFAULT_DEX_VERTEX_LABEL : type.getName());
 				
 				for (PropertyType t : reader.getPropertyTypes()) {
-					((PropertyTypeAux) t.getAux()).vertexIndexCreated = preexistingVertexPropertyIndexes.contains(t.getName());
+					((PropertyTypeAux) t.getAux()).vertexIndexCreated
+						= preexistingVertexPropertyIndexes.contains(t.getName());
 				}
 				
 				if (!alreadyHasVertexIdIndex   ) createdVertexIdIndex = false;
@@ -289,7 +363,7 @@ public class FGFGraphLoader {
 					tempMap.put(StringFactory.LABEL, type.getName());
 					hasAdditionalLabel = true;
 				}
-				tempMap.put(KEY_ORIGINAL_ID, (int) id);
+				if (createOriginalIdProperty) tempMap.put(FGFConstants.KEY_ORIGINAL_ID, (int) id);
 				a = tempMap;
 			}
 			
@@ -316,13 +390,13 @@ public class FGFGraphLoader {
 					hasAdditionalLabel = true;
 					opsSinceCommit++;
 				}
-				v.setProperty(KEY_ORIGINAL_ID, (int) id);
+				if (createOriginalIdProperty) v.setProperty(FGFConstants.KEY_ORIGINAL_ID, (int) id);
 				opsSinceCommit++;
 			}
 			
 			if (graph instanceof KeyIndexableGraph) {
-				if (!createdVertexIdIndex) {
-					((KeyIndexableGraph) graph).createKeyIndex(KEY_ORIGINAL_ID, Vertex.class);
+				if (!createdVertexIdIndex && createOriginalIdProperty) {
+					((KeyIndexableGraph) graph).createKeyIndex(FGFConstants.KEY_ORIGINAL_ID, Vertex.class);
 					createdVertexIdIndex = true;
 				}
 				
@@ -399,13 +473,13 @@ public class FGFGraphLoader {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long tail, long head, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			Object a = id;
 			if (supplyPropertiesAsIds) {
@@ -431,24 +505,24 @@ public class FGFGraphLoader {
 				try {
 					
 					if (t == null) {
-						Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) tail);
+						Iterable<Vertex> i = graph.getVertices(FGFConstants.KEY_ORIGINAL_ID, (int) tail);
 						Iterator<Vertex> itr = i.iterator();
 						if (itr.hasNext()) t = itr.next();
 						boolean b = itr.hasNext();
 						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
-						if (t == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + tail);
-						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + tail);
+						if (t == null) throw new RuntimeException("Cannot find vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + tail);
+						if (b) throw new RuntimeException("There is more than one vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + tail);
 						vertices[(int) tail] = t;
 					}
 					
 					if (h == null) {
-						Iterable<Vertex> i = graph.getVertices(KEY_ORIGINAL_ID, (int) head);
+						Iterable<Vertex> i = graph.getVertices(FGFConstants.KEY_ORIGINAL_ID, (int) head);
 						Iterator<Vertex> itr = i.iterator();
 						if (itr.hasNext()) h = itr.next();
 						boolean b = itr.hasNext();
 						if (i instanceof CloseableIterable) ((CloseableIterable<?>) i).close();
-						if (h == null) throw new RuntimeException("Cannot find vertex with " + KEY_ORIGINAL_ID + " " + head);
-						if (b) throw new RuntimeException("There is more than one vertex with " + KEY_ORIGINAL_ID + " " + head);
+						if (h == null) throw new RuntimeException("Cannot find vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + head);
+						if (b) throw new RuntimeException("There is more than one vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + head);
 						vertices[(int) head] = h;
 					}
 				}

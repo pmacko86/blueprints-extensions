@@ -20,6 +20,7 @@ import java.util.Set;;
 
 /**
  * @author Daniel Margo (http://www.eecs.harvard.edu/~dmargo)
+ * @author Peter Macko (http://www.eecs.harvard.edu/~pmacko)
  */
 public class SqlVertex extends SqlElement implements Vertex {
     private SqlGraph graph = null;
@@ -111,6 +112,10 @@ public class SqlVertex extends SqlElement implements Vertex {
     
     public Object getId() {
     	return this.vid != -1 ? new Long(this.vid) : null;
+    }
+    
+    public long getRawId() {
+    	return this.vid;
     }
 
     public Object getProperty(final String propertyKey) {

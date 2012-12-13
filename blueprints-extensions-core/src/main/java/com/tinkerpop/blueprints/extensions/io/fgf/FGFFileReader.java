@@ -16,7 +16,7 @@ import java.util.Map;
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public class FGFReader implements Closeable {
+public class FGFFileReader implements Closeable {
 	
 	private File file;
 	private BufferedInputStream in;
@@ -35,12 +35,12 @@ public class FGFReader implements Closeable {
 
 	
 	/**
-	 * Create an instance of class FGFWriter and open the file for writing
+	 * Create an instance of class FGFFileReader and open the file for writing
 	 * 
 	 * @param file the file
 	 * @throws IOException on I/O or parse error 
 	 */
-	public FGFReader(File file) throws IOException {
+	public FGFFileReader(File file) throws IOException {
 		
 		this.file = file;
 		this.in = new BufferedInputStream(new FileInputStream(this.file));
@@ -261,7 +261,7 @@ public class FGFReader implements Closeable {
 	 * @throws IOException on I/O or parse error 
 	 * @throws ClassNotFoundException if a property cannot be loaded due to a missing class
 	 */
-	public void read(FGFReaderHandler handler) throws IOException, ClassNotFoundException {
+	public void read(FGFFileReaderHandler handler) throws IOException, ClassNotFoundException {
 		
 		byte[] header = new byte[4];
 		Map<PropertyType, Object> properties = new HashMap<PropertyType, Object>();
@@ -329,7 +329,7 @@ public class FGFReader implements Closeable {
 				long tail = iin.readLong();
 				readProperties(iin, properties);
 				
-				if (handler != null) handler.edge(id++, head, tail, t, properties);
+				if (handler != null) handler.edge(id++, tail, head, t, properties);
 			}
 			
 			if (handler != null) handler.edgeTypeEnd(t, t.size());

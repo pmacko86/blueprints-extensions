@@ -14,14 +14,14 @@ import joptsimple.OptionSet;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileWriter;
 import com.tinkerpop.blueprints.extensions.io.fgf.GraphML2FGF;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
 
 
 /**
@@ -215,9 +215,9 @@ public class FGFTool {
     	
     	// Tool
     	
-     	FGFReader r = new FGFReader(new File(inputFile));
+     	FGFFileReader r = new FGFFileReader(new File(inputFile));
     	try {
-			r.read(new FGFReaderHandler() {
+			r.read(new FGFFileReaderHandler() {
 				
 				private void printProperties(Map<PropertyType, Object> properties) {
 					if (!properties.isEmpty()) {
@@ -267,7 +267,7 @@ public class FGFTool {
 				}
 				
 				@Override
-				public void edge(long id, long head, long tail, EdgeType type,
+				public void edge(long id, long tail, long head, EdgeType type,
 						Map<PropertyType, Object> properties) {
 					if (printEdges) {
 						System.out.print("Edge " + id + ": " + tail + " ---> " + head
@@ -440,7 +440,7 @@ public class FGFTool {
     	// Tool
     	
     	FileInputStream fin = new FileInputStream(inputFile);
-    	FGFWriter out = new FGFWriter(new File(outputFile));
+    	FGFFileWriter out = new FGFFileWriter(new File(outputFile));
     	
     	if (verbose) System.err.print("Converting:");
     	GraphML2FGF.convert(fin, out, verbose ? new GraphReaderProgressListener() : null);
@@ -499,7 +499,7 @@ public class FGFTool {
     	
     	// Tool
     	
-     	FGFReader r = new FGFReader(new File(inputFile));
+     	FGFFileReader r = new FGFFileReader(new File(inputFile));
      	
     	final long[] totalEdges = new long[] { 0 };
     	final long[] totalNodes = new long[] { 0 };
@@ -517,7 +517,7 @@ public class FGFTool {
   
      	
     	try {
-			r.read(new FGFReaderHandler() {
+			r.read(new FGFFileReaderHandler() {
 				
 				@Override
 				public void vertexTypeStart(VertexType type, long count) {
@@ -526,9 +526,9 @@ public class FGFTool {
 					totalNodes[0] += count;
 					
 					if (detailed) {
-						indegree[0] = Arrays.copyOf(indegree[0], (int) totalNodes[0]);
-						outdegree[0] = Arrays.copyOf(outdegree[0], (int) totalNodes[0]);
-						degree[0] = Arrays.copyOf(degree[0], (int) totalNodes[0]);
+						indegree[0] = Arrays.copyOf(indegree[0], (int) (totalNodes[0]));
+						outdegree[0] = Arrays.copyOf(outdegree[0], (int) (totalNodes[0]));
+						degree[0] = Arrays.copyOf(degree[0], (int) (totalNodes[0]));
 					}
 				}
 				
@@ -557,7 +557,7 @@ public class FGFTool {
 				}
 				
 				@Override
-				public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+				public void edge(long id, long tail, long head, EdgeType type, Map<PropertyType, Object> properties) {
 					
 					if (detailed) {
 						if (head < minVertexId || head > maxVertexId) {
@@ -573,10 +573,10 @@ public class FGFTool {
 						int[] p_outdegree = outdegree[0];
 						int[] p_degree = degree[0];
 						
-						p_indegree[(int)(head - minVertexId)]++;
-						p_outdegree[(int)(tail - minVertexId)]++;
-						p_degree[(int)(head - minVertexId)]++;
-						p_degree[(int)(tail - minVertexId)]++;
+						if (head >= minVertexId) p_indegree[(int)(head - minVertexId)]++;
+						if (tail >= minVertexId) p_outdegree[(int)(tail - minVertexId)]++;
+						if (head >= minVertexId) p_degree[(int)(head - minVertexId)]++;
+						if (tail >= minVertexId) p_degree[(int)(tail - minVertexId)]++;
 					}
 				}
 			});
@@ -594,6 +594,11 @@ public class FGFTool {
 	    	long sum_indegree = 0; for (int x : indegree[0]) sum_indegree += x;
 	    	long sum_outdegree = 0; for (int x : outdegree[0]) sum_outdegree += x;
 	    	long sum_degree = 0; for (int x : degree[0]) sum_degree += x;
+	    	
+	    	/*
+	    	 * Note: The degrees are computed only for the vertices specified in the file, not
+	    	 * for the externally referenced vertices.
+	    	 */
 	    	
 	    	System.out.println();
 	    	System.out.println("average  indegree: " + (sum_indegree / (double) totalNodes[0]));

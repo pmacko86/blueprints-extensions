@@ -11,6 +11,8 @@ public abstract class SqlElement implements Element {
 
     public abstract Object getId();
     
+    public abstract long getRawId();
+    
     public abstract Object getProperty(final String propertyKey);
     
     public abstract Set<String> getPropertyKeys();
@@ -19,4 +21,12 @@ public abstract class SqlElement implements Element {
     
     public abstract Object removeProperty(final String propertyKey);
 
+    
+    /**
+     * Element type
+     */
+    public enum Type {
+    	VERTEX,
+    	EDGE
+    };
 }

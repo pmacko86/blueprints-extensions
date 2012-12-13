@@ -9,9 +9,9 @@ import java.util.Map;
 import org.apache.commons.lang.StringEscapeUtils;
 
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
 
 
 /**
@@ -35,7 +35,7 @@ public class FGF2DexCSV {
 	public static void convert(File inputFile, File outputDir, String prefix,
 			GraphProgressListener listener) throws IOException, ClassNotFoundException {
 
-		FGFReader reader = new FGFReader(inputFile);
+		FGFFileReader reader = new FGFFileReader(inputFile);
 		
 		try {
 			outputDir.mkdirs();
@@ -115,9 +115,9 @@ public class FGF2DexCSV {
 	/**
 	 * The FGF reader handler
 	 */
-	private static class Handler implements FGFReaderHandler {
+	private static class Handler implements FGFFileReaderHandler {
 		
-		private FGFReader reader;
+		private FGFFileReader reader;
 		private File outputDir;
 		private String prefix;
 		private GraphProgressListener listener;
@@ -137,7 +137,7 @@ public class FGF2DexCSV {
 		 * @param prefix the file name prefix for the CSV files
 		 * @param listener the graph progress listener
 		 */
-		public Handler(FGFReader reader, File outputDir, String prefix, GraphProgressListener listener) {
+		public Handler(FGFFileReader reader, File outputDir, String prefix, GraphProgressListener listener) {
 			
 			this.reader = reader;
 			this.outputDir = outputDir;
@@ -382,13 +382,13 @@ public class FGF2DexCSV {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type,
+		public void edge(long id, long tail, long head, EdgeType type,
 				Map<PropertyType, Object> properties) {
 
 			try {

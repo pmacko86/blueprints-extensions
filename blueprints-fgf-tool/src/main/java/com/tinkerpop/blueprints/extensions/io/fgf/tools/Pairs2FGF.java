@@ -10,7 +10,7 @@ import java.util.Vector;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileWriter;
 import com.tinkerpop.blueprints.extensions.io.fgf.tools.FGFTool.GraphReaderProgressListener;
 
 
@@ -391,7 +391,7 @@ public class Pairs2FGF {
 			 */
 			
 			in = new BufferedReader(new FileReader(inputFile));
-			FGFWriter writer = new FGFWriter(outputFile);
+			FGFFileWriter writer = new FGFFileWriter(outputFile);
 			
 			l = verbose ? new GraphReaderProgressListener() : null;
 			if (verbose) System.err.print("Converting:");
@@ -473,12 +473,12 @@ public class Pairs2FGF {
 								}
 							}
 						}
-						n = nodes[f] = writer.writeVertex("", propertyMap);
+						n = nodes[f] = writer.writeVertex(propertyMap);
 						numVertices++;
 					}
 				}
 				
-				writer.writeEdge(nodes[to] /* head */, nodes[from] /* tail */, "", null);
+				writer.writeEdge(nodes[from] /* tail */, nodes[to] /* head */, "", null);
 				numEdges++;
 				
 				

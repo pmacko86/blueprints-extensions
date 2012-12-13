@@ -18,12 +18,12 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.TransactionalGraph.Conclusion;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFConstants;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
 import com.tinkerpop.blueprints.impls.neo4j.Neo4jGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
 
@@ -45,7 +45,7 @@ public class Neo4jFGFIncrementalLoader {
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(Neo4jGraph graph, File file) throws IOException, ClassNotFoundException {
-		load(graph, file, 100000, false, null);
+		load(graph, file, 100000, null);
 	}	
 	
 	
@@ -55,18 +55,17 @@ public class Neo4jFGFIncrementalLoader {
 	 * @param graph the batch graph
 	 * @param file the input file
 	 * @param txBuffer the number of operations before a commit
-	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(Neo4jGraph graph, File file,
-			int txBuffer, boolean indexAllProperties, GraphProgressListener listener)
+			int txBuffer, GraphProgressListener listener)
 			throws IOException, ClassNotFoundException {
 		
-		FGFReader reader = new FGFReader(file);
+		FGFFileReader reader = new FGFFileReader(file);
 
-		Loader l = new Loader(graph, reader, txBuffer, indexAllProperties, listener);
+		Loader l = new Loader(graph, reader, txBuffer, false, listener);
 		reader.read(l);
 		l.finish();
 		l = null;
@@ -81,12 +80,12 @@ public class Neo4jFGFIncrementalLoader {
 	/**
 	 * The actual graph loader
 	 */
-	private static class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFFileReaderHandler {
 		
 		private final Neo4jGraph blueprintsGraph;
 		private final GraphDatabaseService graph;
 		private final AutoIndexer<Node> nodeIndexer;
-		private FGFReader reader;
+		private FGFFileReader reader;
 		private boolean indexAllProperties;
 		private GraphProgressListener listener;
 		
@@ -116,7 +115,7 @@ public class Neo4jFGFIncrementalLoader {
 		 * @param indexAllProperties whether to index all properties
 		 * @param listener the progress listener
 		 */
-		public Loader(Neo4jGraph graph, FGFReader reader, int txBuffer, boolean indexAllProperties, GraphProgressListener listener) {
+		public Loader(Neo4jGraph graph, FGFFileReader reader, int txBuffer, boolean indexAllProperties, GraphProgressListener listener) {
 			
 			this.blueprintsGraph = graph;
 			this.graph = this.blueprintsGraph.getRawGraph();
@@ -143,8 +142,8 @@ public class Neo4jFGFIncrementalLoader {
 		
 			// Index check
 			
-			if (!nodeIndexer.isEnabled() || !nodeIndexer.getAutoIndexedProperties().contains(FGFGraphLoader.KEY_ORIGINAL_ID)) {
-				throw new RuntimeException(FGFGraphLoader.KEY_ORIGINAL_ID + " is not indexed");
+			if (!nodeIndexer.isEnabled() || !nodeIndexer.getAutoIndexedProperties().contains(FGFConstants.KEY_ORIGINAL_ID)) {
+				throw new RuntimeException(FGFConstants.KEY_ORIGINAL_ID + " is not indexed");
 			}
 			
 			
@@ -207,7 +206,7 @@ public class Neo4jFGFIncrementalLoader {
 			
 			/*if (n.getId() == 0) {
 				System.err.println("\nWarning: Created node with ID " + n.getId()
-						+ " for " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + id);
+						+ " for " + FGFConstants.KEY_ORIGINAL_ID + "=" + id);
 			}*/
 			
 			
@@ -225,7 +224,7 @@ public class Neo4jFGFIncrementalLoader {
 				hasAdditionalVertexLabel = true;
 				opsSinceCommit++;
 			}
-			n.setProperty(FGFGraphLoader.KEY_ORIGINAL_ID, (int) id);
+			n.setProperty(FGFConstants.KEY_ORIGINAL_ID, (int) id);
 			opsSinceCommit++;
 			
 			
@@ -257,13 +256,13 @@ public class Neo4jFGFIncrementalLoader {
 		public void vertexTypeEnd(VertexType type, long count) {
 			
 			if (!originalVertexIdIndexCreated) {
-				if (!preexistingVertexPropertyIndexes.contains(FGFGraphLoader.KEY_ORIGINAL_ID)) {
+				if (!preexistingVertexPropertyIndexes.contains(FGFConstants.KEY_ORIGINAL_ID)) {
 					if (tx != null) {
 						tx.success();
 						tx.finish();
 						tx = null;
 					}
-					blueprintsGraph.createKeyIndex(FGFGraphLoader.KEY_ORIGINAL_ID, Vertex.class);
+					blueprintsGraph.createKeyIndex(FGFConstants.KEY_ORIGINAL_ID, Vertex.class);
 				}
 				originalVertexIdIndexCreated = true;
 			}
@@ -320,13 +319,13 @@ public class Neo4jFGFIncrementalLoader {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long tail, long head, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			// Look up the head and tail vertices; attempt to use the key indexes if the corresponding
 			// Node objects are not readily available
@@ -336,24 +335,24 @@ public class Neo4jFGFIncrementalLoader {
 			
 			if (t == null || h == null) {
 				if (t == null) {
-					Iterable<Node> i = nodeIndexer.getAutoIndex().get(FGFGraphLoader.KEY_ORIGINAL_ID, (int) tail);
+					Iterable<Node> i = nodeIndexer.getAutoIndex().get(FGFConstants.KEY_ORIGINAL_ID, (int) tail);
 					Iterator<Node> itr = i.iterator();
 					if (itr.hasNext()) t = itr.next();
 					boolean b = itr.hasNext();
 					if (i instanceof IndexHits) ((IndexHits<?>) i).close();
-					if (t == null) throw new RuntimeException("Cannot find vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + tail);
-					if (b) throw new RuntimeException("There is more than one vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + tail);
+					if (t == null) throw new RuntimeException("Cannot find vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + tail);
+					if (b) throw new RuntimeException("There is more than one vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + tail);
 					vertices[(int) tail] = t;
 				}
 				
 				if (h == null) {
-					Iterable<Node> i = nodeIndexer.getAutoIndex().get(FGFGraphLoader.KEY_ORIGINAL_ID, (int) head);
+					Iterable<Node> i = nodeIndexer.getAutoIndex().get(FGFConstants.KEY_ORIGINAL_ID, (int) head);
 					Iterator<Node> itr = i.iterator();
 					if (itr.hasNext()) h = itr.next();
 					boolean b = itr.hasNext();
 					if (i instanceof IndexHits) ((IndexHits<?>) i).close();
-					if (h == null) throw new RuntimeException("Cannot find vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + head);
-					if (b) throw new RuntimeException("There is more than one vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + head);
+					if (h == null) throw new RuntimeException("Cannot find vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + head);
+					if (b) throw new RuntimeException("There is more than one vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + head);
 					vertices[(int) head] = h;
 				}
 			}
@@ -369,8 +368,8 @@ public class Neo4jFGFIncrementalLoader {
 			}
 			catch (org.neo4j.graphdb.NotFoundException e) {
 				System.err.println("\nError while creating a relationship: " + e.getMessage());
-				System.err.println("  Tail: node[" + t.getId() + "], " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + tail);
-				System.err.println("  Head: node[" + h.getId() + "], " + FGFGraphLoader.KEY_ORIGINAL_ID + "=" + head);
+				System.err.println("  Tail: node[" + t.getId() + "], " + FGFConstants.KEY_ORIGINAL_ID + "=" + tail);
+				System.err.println("  Head: node[" + h.getId() + "], " + FGFConstants.KEY_ORIGINAL_ID + "=" + head);
 				System.err.println("  Type: " + relationshipType);
 				throw e;
 			}

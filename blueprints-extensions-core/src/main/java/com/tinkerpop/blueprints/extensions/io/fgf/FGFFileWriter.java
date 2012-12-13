@@ -20,7 +20,9 @@ import java.util.Map.Entry;
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public class FGFWriter implements Closeable {
+public class FGFFileWriter implements Closeable {
+	
+	static final String DEFAULT_VERTEX_TYPE = ""; 
 	
 	private File file;
 	private DataOutputStream out;
@@ -28,8 +30,8 @@ public class FGFWriter implements Closeable {
 	private File propertyTypeFile;
 	private RandomAccessFile propertyTypeOut;
 	
-	private Map<String, ObjectType> vertexTypes = new HashMap<String, FGFWriter.ObjectType>(); 
-	private Map<String, ObjectType> edgeTypes = new HashMap<String, FGFWriter.ObjectType>(); 
+	private Map<String, ObjectType> vertexTypes = new HashMap<String, FGFFileWriter.ObjectType>(); 
+	private Map<String, ObjectType> edgeTypes = new HashMap<String, FGFFileWriter.ObjectType>(); 
 	
 	private boolean closed = false;
 	private Map<String, PropertyType> propertyTypes = new HashMap<String, PropertyType>();
@@ -41,25 +43,25 @@ public class FGFWriter implements Closeable {
 	
 
 	/**
-	 * Create an instance of class FGFWriter and open the file for writing
+	 * Create an instance of class FGFFileWriter and open the file for writing
 	 * 
 	 * @param file the file
 	 * @throws IOException on error
 	 */
-	public FGFWriter(File file) throws IOException {
+	public FGFFileWriter(File file) throws IOException {
 		this(file, 0, 0);
 	}
 	
 
 	/**
-	 * Create an instance of class FGFWriter and open the file for writing
+	 * Create an instance of class FGFFileWriter and open the file for writing
 	 * 
 	 * @param file the file
 	 * @param initialVertexId the initial vertex ID
 	 * @param initialEdgeId the initial vertex ID
 	 * @throws IOException on error
 	 */
-	public FGFWriter(File file, long initialVertexId, long initialEdgeId) throws IOException {
+	public FGFFileWriter(File file, long initialVertexId, long initialEdgeId) throws IOException {
 		
 		this.file = file;
 		this.initialVertexId = initialVertexId;
@@ -259,18 +261,23 @@ public class FGFWriter implements Closeable {
 	 * @return the type
 	 * @throws IOException on error
 	 */
-	private ObjectType getVertexType(String key) throws IOException {
-		ObjectType t = vertexTypes.get(key);
+	private ObjectType getVertexType() throws IOException {
+		
+		ObjectType t = vertexTypes.get(DEFAULT_VERTEX_TYPE);
 		if (t == null) {
 			
-			// FIXME we have an ID problem
+			/*
+			 * Note: The FGF1 format does not currently support more than one
+			 * vertex type, but it will be great to fix this in the future.
+			 */
 			if (!vertexTypes.isEmpty()) {
-				throw new UnsupportedOperationException("Trying to use more than one vertex type -- not implemented.");
+				throw new InternalError("Trying to use more than one vertex type -- not supported.");
 			}
 			
-			t = new ObjectType(true, key);
-			vertexTypes.put(key, t);
+			t = new ObjectType(true, DEFAULT_VERTEX_TYPE);
+			vertexTypes.put(DEFAULT_VERTEX_TYPE, t);
 		}
+		
 		return t;
 	}
 	
@@ -345,14 +352,13 @@ public class FGFWriter implements Closeable {
 	/**
 	 * Write a vertex
 	 * 
-	 * @param type the vertex type
 	 * @param properties the vertex properties (can be null)
 	 * @return the vertex ID
 	 * @throws IOException on error
 	 */
-	public long writeVertex(String type, Map<String, Object> properties) throws IOException {
+	public long writeVertex(Map<String, Object> properties) throws IOException {
 		
-		ObjectType t = getVertexType(type);
+		ObjectType t = getVertexType();
 		long id = initialVertexId + t.count++;
 				
 		writeProperties(t.out, properties);
@@ -364,13 +370,13 @@ public class FGFWriter implements Closeable {
 	/**
 	 * Write an edge
 	 * 
-	 * @param head the head vertex id
-	 * @param tail the tail vertex id
+	 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+	 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 	 * @param type the edge type (label)
 	 * @param properties the vertex properties (can be null)
 	 * @throws IOException on error
 	 */
-	public void writeEdge(long head, long tail, String type, Map<String, Object> properties) throws IOException {
+	public void writeEdge(long tail, long head, String type, Map<String, Object> properties) throws IOException {
 		
 		ObjectType t = getEdgeType(type);
 		t.count++;
@@ -407,7 +413,7 @@ public class FGFWriter implements Closeable {
 		
 		public ObjectType(boolean vertex, String name) throws IOException {
 			
-			file = File.createTempFile(FGFWriter.this.file.getName(), ".tmp");
+			file = File.createTempFile(FGFFileWriter.this.file.getName(), ".tmp");
 			file.deleteOnExit();
 			out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
 			

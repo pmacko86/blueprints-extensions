@@ -16,6 +16,7 @@ import java.util.Set;
 
 /**
  * @author Daniel Margo (http://www.eecs.harvard.edu/~dmargo)
+ * @author Peter Macko (http://www.eecs.harvard.edu/~pmacko)
  */
 public class SqlEdge extends SqlElement implements Edge {
 	private SqlGraph graph = null;
@@ -143,6 +144,10 @@ public class SqlEdge extends SqlElement implements Edge {
 
     public Object getId() {
     	return this.eid != -1 ? new Long(this.eid) : null;
+    }
+    
+    public long getRawId() {
+    	return this.eid;
     }
     
     public String getLabel() {

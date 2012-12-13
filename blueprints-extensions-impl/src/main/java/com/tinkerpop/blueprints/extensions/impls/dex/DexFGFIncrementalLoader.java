@@ -13,12 +13,12 @@ import com.sparsity.dex.gdb.ObjectsIterator;
 import com.sparsity.dex.gdb.Type;
 import com.sparsity.dex.gdb.Value;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFConstants;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
 
 
@@ -39,7 +39,7 @@ public class DexFGFIncrementalLoader {
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(DexGraph graph, File file) throws IOException, ClassNotFoundException {
-		load(graph, file, false, null);
+		load(graph, file, null);
 	}	
 	
 	
@@ -48,18 +48,17 @@ public class DexFGFIncrementalLoader {
 	 * 
 	 * @param graph the batch graph
 	 * @param file the input file
-	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(DexGraph graph, File file,
-			boolean indexAllProperties, GraphProgressListener listener)
+			GraphProgressListener listener)
 			throws IOException, ClassNotFoundException {
 		
-		FGFReader reader = new FGFReader(file);
+		FGFFileReader reader = new FGFFileReader(file);
 
-		Loader l = new Loader(graph, reader, indexAllProperties, listener);
+		Loader l = new Loader(graph, reader, false, listener);
 		reader.read(l);
 		l.finish();
 		l = null;
@@ -74,11 +73,11 @@ public class DexFGFIncrementalLoader {
 	/**
 	 * The actual graph loader
 	 */
-	private static class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFFileReaderHandler {
 		
 		private final DexGraph blueprintsGraph;
 		private final Graph graph;
-		private FGFReader reader;
+		private FGFFileReader reader;
 		private boolean indexAllProperties;
 		private GraphProgressListener listener;
 		
@@ -105,7 +104,7 @@ public class DexFGFIncrementalLoader {
 		 * @param indexAllProperties whether to index all properties
 		 * @param listener the progress listener
 		 */
-		public Loader(DexGraph graph, FGFReader reader, boolean indexAllProperties, GraphProgressListener listener) {
+		public Loader(DexGraph graph, FGFFileReader reader, boolean indexAllProperties, GraphProgressListener listener) {
 			
 			this.blueprintsGraph = graph;
 			this.graph = this.blueprintsGraph.getRawGraph();
@@ -161,7 +160,7 @@ public class DexFGFIncrementalLoader {
 		 * @return the handle 
 		 */
 		private int getOrCreateAttributeHandle(PropertyType type) {
-			assert !type.getName().equals(FGFGraphLoader.KEY_ORIGINAL_ID);
+			assert !type.getName().equals(FGFConstants.KEY_ORIGINAL_ID);
 			int attr = ((PropertyTypeAux) type.getAux()).attr;
 			if (attr != Attribute.InvalidAttribute) return attr;
 			attr = DexUtils.getOrCreateAttributeHandle(graph, this.type, type.getName(),
@@ -207,14 +206,14 @@ public class DexFGFIncrementalLoader {
 			// The original ID attribute
 			
 			if (!newType) {
-				this.attrId = graph.findAttribute(this.type, FGFGraphLoader.KEY_ORIGINAL_ID);
+				this.attrId = graph.findAttribute(this.type, FGFConstants.KEY_ORIGINAL_ID);
 				if (this.attrId == Attribute.InvalidAttribute) {
-					throw new RuntimeException("Attribute " + FGFGraphLoader.KEY_ORIGINAL_ID + " does not exist");
+					throw new RuntimeException("Attribute " + FGFConstants.KEY_ORIGINAL_ID + " does not exist");
 				}
 			}
 			else {
 				this.attrId = DexUtils.getOrCreateAttributeHandle(graph, this.type,
-						FGFGraphLoader.KEY_ORIGINAL_ID, DataType.Integer, AttributeKind.Unique);
+						FGFConstants.KEY_ORIGINAL_ID, DataType.Integer, AttributeKind.Unique);
 			}
 			this.attrIds[vertexTypeIndex] = this.attrId;
 			
@@ -223,7 +222,7 @@ public class DexFGFIncrementalLoader {
 			
 			Attribute attrIdData = graph.getAttribute(attrId);
 			if (attrIdData.getKind() == AttributeKind.Basic) {
-				throw new RuntimeException(FGFGraphLoader.KEY_ORIGINAL_ID + " is not indexed");
+				throw new RuntimeException(FGFConstants.KEY_ORIGINAL_ID + " is not indexed");
 			}
 		}
 		
@@ -253,7 +252,7 @@ public class DexFGFIncrementalLoader {
 					if (objsItr.hasNext()) {
 						objsItr.close();
 						objs.close();
-						throw new RuntimeException("There is more than one vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + id);
+						throw new RuntimeException("There is more than one vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + id);
 					}
 				}
 
@@ -263,7 +262,7 @@ public class DexFGFIncrementalLoader {
 				if (oid != Objects.InvalidOID) return oid;
 			}
 			
-			throw new RuntimeException("Cannot find vertex with " + FGFGraphLoader.KEY_ORIGINAL_ID + " " + id);
+			throw new RuntimeException("Cannot find vertex with " + FGFConstants.KEY_ORIGINAL_ID + " " + id);
 		}
 
 		
@@ -343,13 +342,13 @@ public class DexFGFIncrementalLoader {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long tail, long head, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			// Look up the head and tail vertices; attempt to use the key indexes if the corresponding
 			// Node objects are not readily available

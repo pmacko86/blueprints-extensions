@@ -11,12 +11,12 @@ import org.neo4j.unsafe.batchinsert.BatchInserter;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFConstants;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
 import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
 
@@ -38,7 +38,7 @@ public class Neo4jFGFLoader {
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
 	public static void load(Neo4jBatchGraph graph, File file) throws IOException, ClassNotFoundException {
-		load(graph, file, false, null);
+		load(graph, file, null);
 	}	
 	
 	
@@ -47,16 +47,14 @@ public class Neo4jFGFLoader {
 	 * 
 	 * @param graph the batch graph
 	 * @param file the input file
-	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 * @throws ClassNotFoundException on property unmarshalling error due to a missing class
 	 */
-	public static void load(Neo4jBatchGraph graph, File file,
-			boolean indexAllProperties, GraphProgressListener listener)
+	public static void load(Neo4jBatchGraph graph, File file, GraphProgressListener listener)
 			throws IOException, ClassNotFoundException {
 		
-		FGFReader reader = new FGFReader(file);
+		FGFFileReader reader = new FGFFileReader(file);
 		
 		if (reader.getInitialVertexId() != 0) {
 			throw new IOException("The FGF file is not bulk-loadable: the initial vertex ID is not 0");
@@ -66,7 +64,7 @@ public class Neo4jFGFLoader {
 			throw new IOException("The FGF file is not bulk-loadable: the initial edge ID is not 0");
 		}
 
-		Loader l = new Loader(graph, reader, indexAllProperties, listener);
+		Loader l = new Loader(graph, reader, false, listener);
 		reader.read(l);
 		l = null;
 		
@@ -80,11 +78,11 @@ public class Neo4jFGFLoader {
 	/**
 	 * The actual graph loader
 	 */
-	private static class Loader implements FGFReaderHandler {
+	private static class Loader implements FGFFileReaderHandler {
 		
 		private final Neo4jBatchGraph graph;
 		private final BatchInserter inserter;
-		private FGFReader reader;
+		private FGFFileReader reader;
 		private boolean indexAllProperties;
 		private GraphProgressListener listener;
 		
@@ -106,7 +104,7 @@ public class Neo4jFGFLoader {
 		 * @param indexAllProperties whether to index all properties
 		 * @param listener the progress listener
 		 */
-		public Loader(Neo4jBatchGraph graph, FGFReader reader, boolean indexAllProperties, GraphProgressListener listener) {
+		public Loader(Neo4jBatchGraph graph, FGFFileReader reader, boolean indexAllProperties, GraphProgressListener listener) {
 			
 			this.graph = graph;
 			this.inserter = graph.getRawGraph();
@@ -168,7 +166,7 @@ public class Neo4jFGFLoader {
 				tempMap.put(StringFactory.LABEL, type.getName());
 				hasAdditionalVertexLabel = true;
 			}
-			tempMap.put(FGFGraphLoader.KEY_ORIGINAL_ID, (int) id);
+			tempMap.put(FGFConstants.KEY_ORIGINAL_ID, (int) id);
 			
 			long v = inserter.createNode(tempMap);
 			vertices[(int) id] = v;
@@ -190,7 +188,7 @@ public class Neo4jFGFLoader {
 		public void vertexTypeEnd(VertexType type, long count) {
 			
 			if (!originalVertexIdIndexCreated) {
-				graph.createKeyIndex(FGFGraphLoader.KEY_ORIGINAL_ID, Vertex.class);
+				graph.createKeyIndex(FGFConstants.KEY_ORIGINAL_ID, Vertex.class);
 				originalVertexIdIndexCreated = true;
 			}
 			
@@ -227,13 +225,13 @@ public class Neo4jFGFLoader {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type, Map<PropertyType, Object> properties) {
+		public void edge(long id, long tail, long head, EdgeType type, Map<PropertyType, Object> properties) {
 			
 			tempMap.clear();
 			for (Map.Entry<PropertyType, Object> e : properties.entrySet()) {

@@ -12,7 +12,7 @@ import java.util.Random;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileWriter;
 import com.tinkerpop.blueprints.extensions.io.fgf.tools.FGFTool.GraphReaderProgressListener;
 
 
@@ -258,7 +258,7 @@ public class FGFGraphGenerator {
 		// Write & randomly assign properties + edge labels
 		//
 		
-		FGFWriter out = new FGFWriter(outputFile);
+		FGFFileWriter out = new FGFFileWriter(outputFile);
 		
 		GraphReaderProgressListener l = verbose ? new GraphReaderProgressListener() : null;
 		if (verbose) System.err.print("Writing   :");
@@ -280,7 +280,7 @@ public class FGFGraphGenerator {
 				properties.put(p.getName(), p.generateValue());
 			}
 			
-			long _i = out.writeVertex("", properties);
+			long _i = out.writeVertex(properties);
 			assert i == _i;
 			
 			if (verbose && i % 100000 == 0) l.graphProgress((int) i, (int) 0);
@@ -301,7 +301,7 @@ public class FGFGraphGenerator {
 				properties.put(p.getName(), p.generateValue());
 			}
 			
-			out.writeEdge(heads[(int) i], tails[(int) i], type, properties);
+			out.writeEdge(tails[(int) i], heads[(int) i], type, properties);
 			
 			if (verbose && i % 100000 == 0) l.graphProgress((int) vertices, (int) i);
 		}

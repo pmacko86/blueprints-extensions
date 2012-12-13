@@ -18,7 +18,7 @@ import com.sparsity.dex.io.TypeLoaderEvent;
 import com.sparsity.dex.io.TypeLoaderListener;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGF2DexCSV;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFGraphLoader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFConstants;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
 
@@ -40,7 +40,7 @@ public class DexCSVLoader {
 	 * @throws IOException on I/O or parse error
 	 */
 	public static void load(com.sparsity.dex.gdb.Graph graph, File dir, String prefix) throws IOException {
-		load(graph, dir, prefix, false, null);
+		load(graph, dir, prefix, null);
 	}
 	
 	
@@ -50,12 +50,11 @@ public class DexCSVLoader {
 	 * @param graph the DEX graph
 	 * @param dir the directory with the input files
 	 * @param prefix the file name prefix
-	 * @param indexAllProperties whether to index all properties
 	 * @param listener the progress listener
 	 * @throws IOException on I/O or parse error
 	 */
 	public static void load(com.sparsity.dex.gdb.Graph graph, File dir, String prefix,
-			boolean indexAllProperties, GraphProgressListener listener) throws IOException {
+			GraphProgressListener listener) throws IOException {
 		
 		if (dir.exists() && !dir.isDirectory()) {
 			throw new IOException("The specified directory is not a directory: " + dir.getName());
@@ -123,8 +122,8 @@ public class DexCSVLoader {
 			File metaFile = new File(f.getParentFile(), metaFileName);
 			HashMap<String, DataType> attributeTypes = readPropertyTypes(metaFile);
 			
-			attributeTypes.put(FGFGraphLoader.KEY_ORIGINAL_ID, DataType.Integer);
-			csvAttributeToColumn.put(FGFGraphLoader.KEY_ORIGINAL_ID, 0);
+			attributeTypes.put(FGFConstants.KEY_ORIGINAL_ID, DataType.Integer);
+			csvAttributeToColumn.put(FGFConstants.KEY_ORIGINAL_ID, 0);
 
 
 			// Create the new DEX type and its properties
@@ -147,8 +146,7 @@ public class DexCSVLoader {
 				}
 				
 				AttributeKind ak = AttributeKind.Basic;
-				if (indexAllProperties) ak = AttributeKind.Indexed;
-				if (s.equals(FGFGraphLoader.KEY_ORIGINAL_ID)) ak = AttributeKind.Unique;
+				if (s.equals(FGFConstants.KEY_ORIGINAL_ID)) ak = AttributeKind.Unique;
 				int a = graph.newAttribute(type, s, attributeTypes.get(s), ak);
 				
 				attributeMap.put(s, a);
@@ -156,7 +154,7 @@ public class DexCSVLoader {
 				attributes.add(a);
 			}
 			
-			nodeIdAttribute = attributeMap.get(FGFGraphLoader.KEY_ORIGINAL_ID);
+			nodeIdAttribute = attributeMap.get(FGFConstants.KEY_ORIGINAL_ID);
 			
 			
 			// Create the CSV reader
@@ -221,7 +219,7 @@ public class DexCSVLoader {
 					throw new IOException("The attribute " + s + " does not appear in the .csv header");
 				}
 				
-				boolean index = indexAllProperties;
+				boolean index = false;
 				int a = graph.newAttribute(type, s, attributeTypes.get(s), index ? AttributeKind.Indexed : AttributeKind.Basic);
 				attributeMap.put(s, a);
 				attributePositions.add(column);

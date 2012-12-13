@@ -10,12 +10,12 @@ import java.util.Vector;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.EdgeType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.PropertyType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReader.VertexType;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFReaderHandler;
-import com.tinkerpop.blueprints.extensions.io.fgf.FGFWriter;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
+import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileWriter;
 import com.tinkerpop.blueprints.extensions.io.fgf.tools.FGFTool.GraphReaderProgressListener;
 
 
@@ -151,23 +151,23 @@ public class FGFSplitter {
 		// Split
 
 		try {
-			FGFReader reader = new FGFReader(inputFile);
+			FGFFileReader reader = new FGFFileReader(inputFile);
 			
-			FGFReader.VertexType[] vertexTypes = reader.getVertexTypes();
-			FGFReader.EdgeType[] edgeTypes = reader.getEdgeTypes();
+			FGFFileReader.VertexType[] vertexTypes = reader.getVertexTypes();
+			FGFFileReader.EdgeType[] edgeTypes = reader.getEdgeTypes();
 			
 			
 			// Calculate how many vertices and edges to copy to the first file
 			
 			long vertices1 = 0;
-			for (FGFReader.VertexType t : vertexTypes) {
+			for (FGFFileReader.VertexType t : vertexTypes) {
 				long count = (long) (t.size() * weight);
 				t.setAux(new MyAux(count));
 				vertices1 += count;
 			}
 			
 			long edges1 = 0;
-			for (FGFReader.EdgeType t : edgeTypes) {
+			for (FGFFileReader.EdgeType t : edgeTypes) {
 				long count = (long) (t.size() * weight);
 				t.setAux(new MyAux(count));
 				edges1 += count;
@@ -180,10 +180,10 @@ public class FGFSplitter {
 			//       (We do not know exactly how many edges will go to file 1, so there might be fewer
 			//        than reader.getInitialEdgeId() + edges1, but definitely not more than that).
 			
-			FGFWriter writer1 = new FGFWriter(new File(outputFiles.get(0)),
+			FGFFileWriter writer1 = new FGFFileWriter(new File(outputFiles.get(0)),
 					reader.getInitialVertexId(), reader.getInitialEdgeId());
 			
-			FGFWriter writer2 = new FGFWriter(new File(outputFiles.get(1)),
+			FGFFileWriter writer2 = new FGFFileWriter(new File(outputFiles.get(1)),
 					reader.getInitialVertexId() + vertices1, reader.getInitialEdgeId() + edges1);
 			
 			
@@ -225,10 +225,10 @@ public class FGFSplitter {
     /**
      * The splitter
      */
-    private static class Splitter implements FGFReaderHandler {
+    private static class Splitter implements FGFFileReaderHandler {
     	
-    	private FGFReader reader;
-    	private FGFWriter[] writers;
+    	private FGFFileReader reader;
+    	private FGFFileWriter[] writers;
     	private GraphReaderProgressListener listener;
     	
     	private HashMap<String, Object> temp;
@@ -245,10 +245,10 @@ public class FGFSplitter {
     	 * @param writer1 the first writer
     	 * @param writer2 the second writer
     	 */
-    	public Splitter(FGFReader reader, FGFWriter writer1, FGFWriter writer2, GraphReaderProgressListener listener) {
+    	public Splitter(FGFFileReader reader, FGFFileWriter writer1, FGFFileWriter writer2, GraphReaderProgressListener listener) {
     		
     		this.reader = reader;
-    		this.writers = new FGFWriter[] { writer1, writer2 };
+    		this.writers = new FGFFileWriter[] { writer1, writer2 };
     		this.listener = listener;
     		
     		this.temp = new HashMap<String, Object>();
@@ -277,7 +277,7 @@ public class FGFSplitter {
 				temp.put(p.getKey().getName(), p.getValue());
 			}
 			
-			FGFWriter w;
+			FGFFileWriter w;
 			if (aux.count > 0) {
 				aux.count--;
 				w = writers[0];
@@ -288,7 +288,7 @@ public class FGFSplitter {
 			}
 			
 			try {
-				long l = w.writeVertex(type.getName(), temp);
+				long l = w.writeVertex(temp);
 				if (l != vertexId) {
 					throw new IllegalStateException("Expected to generate vertex with ID " + vertexId + " but got back ID " + l);
 				}
@@ -307,13 +307,13 @@ public class FGFSplitter {
 		 * Callback for an edge
 		 * 
 		 * @param id the edge ID
-		 * @param head the vertex at the head
-		 * @param tail the vertex at the tail
+		 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+		 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 		 * @param type the edge type (label)
 		 * @param properties the map of properties
 		 */
 		@Override
-		public void edge(long id, long head, long tail, EdgeType type,
+		public void edge(long id, long tail, long head, EdgeType type,
 				Map<PropertyType, Object> properties) {
 			
 			MyAux aux = (MyAux) type.getAux();
@@ -325,7 +325,7 @@ public class FGFSplitter {
 			boolean hIn1 = verticesInFile1.get((int) (head - initialVertexId));
 			boolean tIn1 = verticesInFile1.get((int) (tail - initialVertexId));
 			
-			FGFWriter w;
+			FGFFileWriter w;
 			if (aux.count > 0 && hIn1 && tIn1) {
 				aux.count--;
 				w = writers[0];
@@ -335,7 +335,7 @@ public class FGFSplitter {
 			}
 			
 			try {
-				w.writeEdge(head, tail, type.getName(), temp);
+				w.writeEdge(tail, head, type.getName(), temp);
 				edgesLoaded++;
 			}
 			catch (IOException e) {

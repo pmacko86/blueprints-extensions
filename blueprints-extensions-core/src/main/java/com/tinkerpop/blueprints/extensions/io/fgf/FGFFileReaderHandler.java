@@ -8,7 +8,7 @@ import java.util.Map;
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
-public interface FGFReaderHandler {
+public interface FGFFileReaderHandler {
 
 
 	/**
@@ -16,7 +16,7 @@ public interface FGFReaderHandler {
 	 * 
 	 * @param type the property type object
 	 */
-	public void propertyType(FGFReader.PropertyType type);
+	public void propertyType(FGFFileReader.PropertyType type);
 	
 	
 	/**
@@ -25,7 +25,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param count the number of vertices of the given type
 	 */
-	public void vertexTypeStart(FGFReader.VertexType type, long count);
+	public void vertexTypeStart(FGFFileReader.VertexType type, long count);
 
 
 	/**
@@ -35,7 +35,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param properties the map of properties
 	 */
-	public void vertex(long id, FGFReader.VertexType type, Map<FGFReader.PropertyType, Object> properties);
+	public void vertex(long id, FGFFileReader.VertexType type, Map<FGFFileReader.PropertyType, Object> properties);
 	
 	
 	/**
@@ -44,7 +44,7 @@ public interface FGFReaderHandler {
 	 * @param type the vertex type
 	 * @param count the number of vertices of the given type
 	 */
-	public void vertexTypeEnd(FGFReader.VertexType type, long count);
+	public void vertexTypeEnd(FGFFileReader.VertexType type, long count);
 	
 	
 	/**
@@ -53,19 +53,19 @@ public interface FGFReaderHandler {
 	 * @param type the edge type
 	 * @param count the number of edges of the given type
 	 */
-	public void edgeTypeStart(FGFReader.EdgeType type, long count);
+	public void edgeTypeStart(FGFFileReader.EdgeType type, long count);
 
 
 	/**
 	 * Callback for an edge
 	 * 
 	 * @param id the edge ID
-	 * @param head the vertex at the head
-	 * @param tail the vertex at the tail
+	 * @param tail the tail vertex id (also known as the "out" or the "source" vertex)
+	 * @param head the head vertex id (also known as the "in" or the "target" vertex)
 	 * @param type the edge type (label)
 	 * @param properties the map of properties
 	 */
-	public void edge(long id, long head, long tail, FGFReader.EdgeType type, Map<FGFReader.PropertyType, Object> properties);
+	public void edge(long id, long tail, long head, FGFFileReader.EdgeType type, Map<FGFFileReader.PropertyType, Object> properties);
 	
 	
 	/**
@@ -74,5 +74,5 @@ public interface FGFReaderHandler {
 	 * @param type the edge type
 	 * @param count the number of edges of the given type
 	 */
-	public void edgeTypeEnd(FGFReader.EdgeType type, long count);
+	public void edgeTypeEnd(FGFFileReader.EdgeType type, long count);
 }
