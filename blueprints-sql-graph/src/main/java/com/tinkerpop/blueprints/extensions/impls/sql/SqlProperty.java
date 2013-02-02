@@ -19,6 +19,8 @@ import com.tinkerpop.blueprints.extensions.io.fgf.FGFTypes;
 /**
  * A class for accessing vertex and edge properties
  * 
+ * TODO Still not in use -- switch to this implementation.
+ * 
  * @author Peter Macko (http://www.eecs.harvard.edu/~pmacko)
  */
 public class SqlProperty {
