@@ -221,6 +221,28 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     	
     	throw new IllegalStateException("Cannot determine the cache size.");
     }
+	
+    
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+    @Override
+	public long getCacheHitCount() {
+    	return -1;	// Not available
+    }
+
+    
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+    @Override
+	public long getCacheMissCount() {
+    	return -1;	// Not available
+    }
 
     
     /**

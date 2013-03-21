@@ -167,6 +167,7 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
     public int getBufferPoolSize() {
     	return cacheSize;	// currently everything goes towards the buffer pool
     }
+
     
     /**
      * Return the total cache size, including the buffer pool and the session caches.
@@ -176,6 +177,28 @@ public class BdbGraph implements Graph, BenchmarkableGraph, BulkloadableGraph {
     @Override
     public int getTotalCacheSize() {
     	return cacheSize;
+    }
+	
+    
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+    @Override
+	public long getCacheHitCount() {
+    	return -1;	// Not available
+    }
+
+    
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+    @Override
+	public long getCacheMissCount() {
+    	return -1;	// Not available
     }
 
     public Vertex addVertex(final Object id) {        

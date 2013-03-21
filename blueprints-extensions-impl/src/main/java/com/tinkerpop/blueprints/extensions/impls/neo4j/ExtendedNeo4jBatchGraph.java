@@ -126,4 +126,26 @@ public class ExtendedNeo4jBatchGraph extends Neo4jBatchGraph implements Benchmar
     public int getTotalCacheSize() {
     	throw new UnsupportedOperationException();
     }
+	
+    
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+    @Override
+	public long getCacheHitCount() {
+    	return -1;	// Not available
+    }
+
+    
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+    @Override
+	public long getCacheMissCount() {
+    	return -1;	// Not available
+    }
 }

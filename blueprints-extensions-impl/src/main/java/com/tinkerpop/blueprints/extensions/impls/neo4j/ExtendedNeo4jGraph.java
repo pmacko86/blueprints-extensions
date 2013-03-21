@@ -99,6 +99,36 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
 	public String getCacheProviderName() {
 		return cacheProvider.getName();
 	}
+	
+	
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+	@Override
+	public long getCacheHitCount() {
+		long l = 0;
+		for (org.neo4j.kernel.impl.cache.Cache<?> cache : nodeManager.caches()) {
+			l += cache.hitCount();
+		}
+		return l;
+	}
+	
+	
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+	@Override
+	public long getCacheMissCount() {
+		long l = 0;
+		for (org.neo4j.kernel.impl.cache.Cache<?> cache : nodeManager.caches()) {
+			l += cache.missCount();
+		}
+		return l;
+	}
 
 	
 	/**

@@ -693,6 +693,28 @@ public class SqlGraph implements AutoTransactionalGraph, BulkloadableGraph, Benc
     	int queryCacheSize = 0; // TODO Implement this
     	return getBufferPoolSize() + queryCacheSize;
     }
+	
+    
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+    @Override
+	public long getCacheHitCount() {
+    	return -1;	// Not available
+    }
+
+    
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+    @Override
+	public long getCacheMissCount() {
+    	return -1;	// Not available
+    }
 
 
     public void clear() {

@@ -52,4 +52,18 @@ public interface BenchmarkableGraph extends Graph {
      * @return the cache size in MB
      */
     public int getTotalCacheSize();
+	
+	/**
+	 * Get the number of cache hits
+	 * 
+	 * @return the cache hits
+	 */
+	public long getCacheHitCount();	
+	
+	/**
+	 * Get the number of cache misses
+	 * 
+	 * @return the cache misses
+	 */
+	public long getCacheMissCount();
 }
