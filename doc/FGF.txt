@@ -1,0 +1,109 @@
+  Fast Graph Format (FGF)
+===========================
+
+A part of the "Blueprints Extensions" package.
+
+Version: 1.0
+URL    : https://code.google.com/p/blueprints-extensions/
+Author : Peter Macko (pmacko at eecs dot harvard dot edu)
+
+
+  Introduction
+----------------
+
+Fast Graph Format (FGF) is a novel binary format for storing graphs developed
+in order to enable efficient loading and exporting of graphs, especially when
+using Java and the Blueprints API. The loading of many existing file formats
+are inefficient because doing so requires XML parsing, which in turn exercises
+Java's garbage collector even to the point that it dominates the runtime of the
+import process. FGF eliminates this problem by being a concise binary format
+optimized for Java in a way that it does not create any unnecessary Java
+objects while reading the data part of the file; it only instantiates objects
+for the metadata and when reading String-based or generic Object-based
+properties. By switching from a popular XML-based graph format, we decreased
+the loading time of a large 1 mil. node graph by an almost two orders of
+magnitude.
+
+
+  Features
+------------
+
+FGF supports:
+  - vertex types
+  - edge types
+  - typed properties
+
+
+  Limitations
+---------------
+
+The file format requires that the vertex and edge IDs are consecutive long
+integers.
+
+
+  File Format
+--------------
+
+Header:
+  4 bytes: "FGF" (3 bytes) and one byte for version, "1" for version 1
+  8 bytes: The number of bytes from the end of this field to the end of this
+           header section
+  8 bytes: The initial vertex ID
+  8 bytes: The initial edge ID
+
+Object counts:
+  8 bytes: The number of property types (e.g. "name", "age", etc.)
+  8 bytes: The number of vertex types
+  For each vertex type:
+    UTF-8 encoded name of the type
+    8 bytes: The number of vertices of that type
+  8 bytes: The number of edge types
+  For each edge type:
+    UTF-8 encoded name of the type
+    8 bytes: The number of edges of that type
+
+Attributes:
+  4 bytes: "ATTR"
+  For each attribute (property) type:
+    UTF-8 encoded name of the property
+    2 bytes: property type code:
+      - 0x00: other (written using Java's ObjectOutputStream)
+      - 0x01: a UTF-8 encoded string
+      - 0x10: boolean
+      - 0x11: short
+      - 0x12: integer
+      - 0x13: long
+      - 0x20: float
+      - 0x21: double
+
+Vertices:
+  For each vertex type:
+    4 byte: "NODE"
+    For each vertex of the given type:
+      1 byte: the number of attributes (key-value pairs). If this number is
+              greater than or equal to 0xFF (Byte.MAX_VALUE in Java), then
+              0xFF followed an 8-byte integer with the actual number
+      For each attribute:
+        1 byte: the attribute type ID (an array index to the "Attributes"
+                section). If this number is greater than or equal to 0xFF, then
+                0xFF followed by an 8-byte integer with the actual number.
+        The attribute value according to its type.
+
+Edges:
+  For each edge type:
+    4 byte: "EDGE"
+    For each edge of the given type:
+      8 bytes: the head vertex ID
+      8 bytes: the tail vertex ID
+      1 byte : the number of attributes (key-value pairs). If this number is
+               greater than or equal to 0xFF (Byte.MAX_VALUE in Java), then
+               0xFF followed an 8-byte integer with the actual number
+      For each attribute:
+        1 byte: the attribute type ID (an array index to the "Attributes"
+                section). If this number is greater than or equal to 0xFF, then
+                0xFF followed by an 8-byte integer with the actual number.
+        The attribute value according to its type.
+
+Footer:
+  4 bytes: "ENDG"
+
