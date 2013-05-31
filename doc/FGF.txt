@@ -38,11 +38,12 @@ FGF supports:
 ---------------
 
 The file format requires that the vertex and edge IDs are consecutive long
-integers.
+integers. This limitation is by design, because it allows us to store the graph
+more concisely.
 
 
   File Format
---------------
+---------------
 
 Header:
   4 bytes: "FGF" (3 bytes) and one byte for version, "1" for version 1
