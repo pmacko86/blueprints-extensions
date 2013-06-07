@@ -19,6 +19,7 @@ import org.neo4j.kernel.impl.core.NodeManager;
 
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Element;
+import com.tinkerpop.blueprints.Parameter;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
 import com.tinkerpop.blueprints.impls.neo4j.Neo4jEdge;
@@ -33,6 +34,7 @@ import com.tinkerpop.blueprints.util.KeyIndexableGraphHelper;
  *
  * @author Peter Macko (http://eecs.harvard.edu/~pmacko)
  */
+@SuppressWarnings("deprecation")
 public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph {
 	
 	protected NodeManager nodeManager;
@@ -43,19 +45,13 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
 	 * Constructors created from the superclass
 	 */
 
-	public ExtendedNeo4jGraph(GraphDatabaseService rawGraph, boolean fresh) {
+	public ExtendedNeo4jGraph(final GraphDatabaseService rawGraph, boolean fresh) {
 		super(rawGraph, fresh);
 		init();
 	}
 
-	public ExtendedNeo4jGraph(GraphDatabaseService rawGraph) {
+	public ExtendedNeo4jGraph(final GraphDatabaseService rawGraph) {
 		super(rawGraph);
-		init();
-	}
-
-	public ExtendedNeo4jGraph(String directory, Map<String, String> configuration,
-			boolean highAvailabilityMode) {
-		super(directory, configuration, highAvailabilityMode);
 		init();
 	}
 
@@ -248,7 +244,8 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
 
 
     @Override
-    public <T extends Element> void createKeyIndex(final String key, final Class<T> elementClass) {
+    public <T extends Element> void createKeyIndex(final String key, final Class<T> elementClass,
+    		@SuppressWarnings("rawtypes") final Parameter... indexParameters) {
 
     	// Hack: a fixed version from the original Blueprints implementation, except without at least one of its bugs
 
@@ -283,9 +280,8 @@ public class ExtendedNeo4jGraph extends Neo4jGraph implements BenchmarkableGraph
     	// Hack: a fixed version from the original Blueprints implementation, except without at least one of its bugs
 
     	final String propertyName = elementClass.getSimpleName() + ":indexed_keys";
-    	@SuppressWarnings("deprecation")
-    	final PropertyContainer pc = ((GraphDatabaseAPI) getRawGraph()).getKernelData().properties();
-    	this.autoStartTransaction();
+    	final PropertyContainer pc = ((GraphDatabaseAPI) getRawGraph()).getNodeManager().getGraphProperties();
+    	this.autoStartTransaction();	// New
     	try {
     		final String[] keys = (String[]) pc.getProperty(propertyName);
     		final Set<String> temp = new HashSet<String>(Arrays.asList(keys));

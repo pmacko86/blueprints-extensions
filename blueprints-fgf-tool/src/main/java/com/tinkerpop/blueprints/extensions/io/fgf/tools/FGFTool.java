@@ -278,6 +278,7 @@ public class FGFTool {
 				}
 			});
 		} catch (ClassNotFoundException e) {
+			try { r.close(); } catch (Exception e2) {};
 			throw new RuntimeException(e);
 		}
     	r.close();
@@ -581,6 +582,7 @@ public class FGFTool {
 				}
 			});
 		} catch (ClassNotFoundException e) {
+			try { r.close(); } catch (Exception e2) {};
 			throw new RuntimeException(e);
 		}
     	r.close();

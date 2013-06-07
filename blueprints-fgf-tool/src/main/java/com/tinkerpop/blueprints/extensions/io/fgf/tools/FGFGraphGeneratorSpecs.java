@@ -565,6 +565,7 @@ public class FGFGraphGeneratorSpecs {
 								BufferedReader r = new BufferedReader(new InputStreamReader(new BufferedInputStream(new FileInputStream(f))));
 								strings = new ArrayList<String>();
 								while ((l = r.readLine()) != null) strings.add(l);
+								r.close();
 							}
 							if (!p_parameters.isEmpty()) {
 								throw new RuntimeException("A string property tag has too many parameters.");

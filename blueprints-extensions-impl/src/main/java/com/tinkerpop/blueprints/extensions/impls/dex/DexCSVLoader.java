@@ -269,6 +269,10 @@ public class DexCSVLoader {
 		
 		StringList header = new StringList();
 		if (!headerReader.read(header)) {
+			try {
+				headerReader.close();
+			}
+			catch (Exception e) {};
 			throw new IOException("The .csv file is missing a header: " + file.getName());
 		}
 		

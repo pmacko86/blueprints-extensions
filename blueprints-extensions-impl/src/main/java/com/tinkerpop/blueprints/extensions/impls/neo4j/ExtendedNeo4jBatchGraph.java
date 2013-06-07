@@ -8,7 +8,7 @@ import org.neo4j.unsafe.batchinsert.BatchInserterIndexProvider;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.BenchmarkableGraph;
-import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
+import com.tinkerpop.blueprints.impls.neo4j.batch.Neo4jBatchGraph;
 
 
 /**

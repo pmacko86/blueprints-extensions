@@ -85,7 +85,8 @@ public class Pairs2FGF {
      * @return the exit code
      * @throws IOException on I/O error
      */
-    static int run(String tool, String[] args) throws Exception {    	
+    @SuppressWarnings("resource")
+	static int run(String tool, String[] args) throws Exception {    	
     	
     	// Parse the command-line options
     	
@@ -284,17 +285,20 @@ public class Pairs2FGF {
 					if (line.startsWith("Id:")) {
 						String[] strFields = line.split(nodePropertiesSeparator, 2);
 						if (strFields.length != 2) {
+							try { in.close(); } catch (Exception e) {};
 							throw new RuntimeException("Error: Error on line " + lineNo
 									+ " of the node properties file -- no Id is specified");
 						}
 						
 						if (sectionId >= 0) {
+							try { in.close(); } catch (Exception e) {};
 							throw new RuntimeException("Error: Error on line " + lineNo
 									+ " of the node properties file -- a blank line must preceed a new Id key");
 						}
 						
 						sectionId = Integer.parseInt(strFields[1]);
 						if (sectionId < 0) {
+							try { in.close(); } catch (Exception e) {};
 							throw new RuntimeException("Error: Error on line " + lineNo
 									+ " of the node properties file -- a negative Id");
 						}
@@ -303,6 +307,7 @@ public class Pairs2FGF {
 							int m = sectionId;
 							int newSize = m < Integer.MAX_VALUE / 4 ? 2 * m : Integer.MAX_VALUE / 2;
 							if (m >= newSize) {
+								try { in.close(); } catch (Exception e) {};
 								throw new RuntimeException("Error: Error on line " + lineNo
 										+ " of the node properties file -- too large Id");
 							}
@@ -324,6 +329,7 @@ public class Pairs2FGF {
 					// A simple single-value properties (we currently do not support multi-valued properties)
 					
 					if (sectionId < 0) {
+						try { in.close(); } catch (Exception e) {};
 						throw new RuntimeException("Error: Error on line " + lineNo
 								+ " of the node properties file -- does not belong to any section with a specified Id");
 					}
@@ -333,6 +339,7 @@ public class Pairs2FGF {
 							if (line.startsWith(nodePropertiesVector.get(i) + ":")) {
 								String[] strFields = line.split(nodePropertiesSeparator, 2);
 								if (strFields.length != 2) {
+									try { in.close(); } catch (Exception e) {};
 									throw new RuntimeException("Error: Error on line " + lineNo
 											+ " of the node properties file -- no value for key " + nodePropertiesVector.get(i));
 								}
@@ -432,6 +439,7 @@ public class Pairs2FGF {
 				
 				String[] strFields = line.split(separator);
 				if (strFields.length != 2) {
+					try { in.close(); writer.close(); } catch (Exception e) {};
 					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- invalid number of fields");
 				}
 				
@@ -439,6 +447,7 @@ public class Pairs2FGF {
 				int to   = fields[1] = Integer.parseInt(strFields[1]);
 				
 				if (from < 0 || to < 0) {
+					try { in.close(); writer.close(); } catch (Exception e) {};
 					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- a negative node ID");
 				}
 				
@@ -449,6 +458,7 @@ public class Pairs2FGF {
 					int m = Math.max(from, to);
 					int newSize = m < Integer.MAX_VALUE / 4 ? 2 * m : Integer.MAX_VALUE / 2;
 					if (m >= newSize) {
+						try { in.close(); writer.close(); } catch (Exception e) {};
 						throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- too large node ID");
 					}
 					long[] a = new long[newSize];

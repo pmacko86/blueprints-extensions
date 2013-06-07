@@ -2,6 +2,7 @@ package com.tinkerpop.blueprints.extensions.impls.dex;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.NoSuchElementException;
 
@@ -36,8 +37,10 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	public static final long ID_STEP = 1024;
 	
 	
-	/// The session
-	private Session session;
+	// Private or default access methods that should be at least protected, if not public
+	
+	private Method method_getRawSession;
+	private Method method_autoStartTransaction;
 	
 
 	/**
@@ -56,9 +59,11 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	 */
 	private void init() {
 		try {
-			Method m = DexGraph.class.getDeclaredMethod("getRawSession");
-			m.setAccessible(true);
-			session = (Session) m.invoke(this);
+			method_getRawSession = DexGraph.class.getDeclaredMethod("getRawSession");
+			method_getRawSession.setAccessible(true);
+			
+			method_autoStartTransaction = DexGraph.class.getDeclaredMethod("autoStartTransaction");
+			method_autoStartTransaction.setAccessible(true);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -71,8 +76,33 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	 * @return the session
 	 */
 	public Session getSession() {
-		return session;
+		startTransaction();
+		try {
+			return (Session) method_getRawSession.invoke(this);
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		} catch (InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
 	}
+	
+	
+	/**
+     * Start a transaction (unless one is already running)
+     */
+    public void startTransaction() {
+    	try {
+    		method_autoStartTransaction.invoke(this);
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		} catch (InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
+    }
 	
 	
 	/**
@@ -82,6 +112,7 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
 	 */
     @Override
     public long countVertices() {
+    	startTransaction();
     	return getRawGraph().countNodes();
     }
     
@@ -94,6 +125,7 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     @Override
     public Vertex getRandomVertex() {
     	
+    	startTransaction();
     	Graph rawGraph = getRawGraph();
     	
     	long nodes = rawGraph.countNodes();
@@ -139,6 +171,7 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
      */
     @Override
     public long countEdges() {
+    	startTransaction();
     	return getRawGraph().countEdges();
     }
     
@@ -151,6 +184,7 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
     @Override
     public Edge getRandomEdge() {
     	
+    	startTransaction();
     	Graph rawGraph = getRawGraph();
     	
     	long nodes = rawGraph.countNodes();
@@ -314,6 +348,7 @@ public class ExtendedDexGraph extends DexGraph implements BenchmarkableGraph {
      */
     public void exportToCSVs(File dir, String prefix) throws IOException {
     	
+    	startTransaction();
     	Graph g = getRawGraph();
     	dir.mkdirs();
     	

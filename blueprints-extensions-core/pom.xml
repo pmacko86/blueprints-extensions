@@ -16,7 +16,7 @@
     <description>Additional interfaces and utilities for Blueprints</description>
     
     <properties>
-    	<blueprintsVersion>2.2.0-SNAPSHOT</blueprintsVersion>
+    	<blueprintsVersion>2.3.0</blueprintsVersion>
     </properties>
 	
 	<developers>
@@ -58,11 +58,11 @@
 			<artifactId>blueprints-neo4j-graph</artifactId>
 			<version>${blueprintsVersion}</version>
 		</dependency>
- 		<dependency>
+		<!--<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-neo4jbatch-graph</artifactId>
 			<version>${blueprintsVersion}</version>
-		</dependency>
+			</dependency>-->
     </dependencies>
 
     <build>

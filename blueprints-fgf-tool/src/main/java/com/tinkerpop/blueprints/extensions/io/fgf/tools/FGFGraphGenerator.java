@@ -432,7 +432,8 @@ public class FGFGraphGenerator {
      * 
      * @param specs the generator specs
      */
-    private static void pairsFile(FGFGraphGeneratorSpecs specs) {
+    @SuppressWarnings("resource")
+	private static void pairsFile(FGFGraphGeneratorSpecs specs) {
     	
        	assert specs.getModelName().equalsIgnoreCase("pairs-file");
        	
@@ -500,6 +501,7 @@ public class FGFGraphGenerator {
 				
 				String[] strFields = line.split(separator);
 				if (strFields.length != 2) {
+					try { in.close(); } catch (Exception e) {};
 					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- invalid number of fields");
 				}
 				
@@ -507,6 +509,7 @@ public class FGFGraphGenerator {
 				int to   = Integer.parseInt(strFields[1]);
 				
 				if (from < 0 || to < 0) {
+					try { in.close(); } catch (Exception e) {};
 					throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- a negative node ID");
 				}
 				
@@ -517,6 +520,7 @@ public class FGFGraphGenerator {
 					int m = Math.max(from, to);
 					int newSize = m < Integer.MAX_VALUE / 4 ? 2 * m : Integer.MAX_VALUE / 2;
 					if (m >= newSize) {
+						try { in.close(); } catch (Exception e) {};
 						throw new RuntimeException("Error: Error on line " + lineNo + " of the input file -- too large node ID");
 					}
 					int[] a = new int[newSize];

@@ -14,14 +14,13 @@ import com.tinkerpop.blueprints.Features;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.KeyIndexableGraph;
 import com.tinkerpop.blueprints.TransactionalGraph;
-import com.tinkerpop.blueprints.TransactionalGraph.Conclusion;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
 import com.tinkerpop.blueprints.impls.dex.DexGraph;
-import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
+import com.tinkerpop.blueprints.impls.neo4j.batch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
 import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
 
@@ -293,7 +292,7 @@ public class FGFGraphReader {
 		 */
 		public void finish() {
 			if (txEnabled) {
-				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				((TransactionalGraph) graph).commit();
 				opsSinceCommit = 0;
 			}
 		}
@@ -424,7 +423,7 @@ public class FGFGraphReader {
 			// Periodically commit
 			
 			if (txEnabled && opsSinceCommit > txBuffer) {
-				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				((TransactionalGraph) graph).commit();
 				opsSinceCommit = 0;
 			}
 			
@@ -567,7 +566,7 @@ public class FGFGraphReader {
 			// Periodically commit
 			
 			if (txEnabled && opsSinceCommit > txBuffer) {
-				((TransactionalGraph) graph).stopTransaction(Conclusion.SUCCESS);
+				((TransactionalGraph) graph).commit();
 				opsSinceCommit = 0;
 			}
 			

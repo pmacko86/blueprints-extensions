@@ -17,7 +17,7 @@ import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.PropertyType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.VertexType;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReaderHandler;
-import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
+import com.tinkerpop.blueprints.impls.neo4j.batch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.StringFactory;
 
 
@@ -57,10 +57,18 @@ public class Neo4jFGFLoader {
 		FGFFileReader reader = new FGFFileReader(file);
 		
 		if (reader.getInitialVertexId() != 0) {
+			try {
+				reader.close();
+			}
+			catch (Exception e) {};
 			throw new IOException("The FGF file is not bulk-loadable: the initial vertex ID is not 0");
 		}
 		
 		if (reader.getInitialEdgeId() != 0) {
+			try {
+				reader.close();
+			}
+			catch (Exception e) {};
 			throw new IOException("The FGF file is not bulk-loadable: the initial edge ID is not 0");
 		}
 

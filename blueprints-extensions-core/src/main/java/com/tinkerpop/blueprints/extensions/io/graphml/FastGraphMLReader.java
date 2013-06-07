@@ -2,7 +2,7 @@ package com.tinkerpop.blueprints.extensions.io.graphml;
 
 import com.tinkerpop.blueprints.extensions.BulkloadableGraph;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
-import com.tinkerpop.blueprints.impls.neo4jbatch.Neo4jBatchGraph;
+import com.tinkerpop.blueprints.impls.neo4j.batch.Neo4jBatchGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLTokens;
 import com.tinkerpop.blueprints.util.wrappers.batch.BatchGraph;
 import com.tinkerpop.blueprints.Edge;

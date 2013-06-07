@@ -16,7 +16,6 @@ import org.neo4j.graphdb.index.IndexHits;
 
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.TransactionalGraph.Conclusion;
 import com.tinkerpop.blueprints.extensions.io.GraphProgressListener;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFConstants;
 import com.tinkerpop.blueprints.extensions.io.fgf.FGFFileReader.EdgeType;
@@ -149,7 +148,7 @@ public class Neo4jFGFIncrementalLoader {
 			
 			// Start a transaction
 			
-			blueprintsGraph.stopTransaction(Conclusion.SUCCESS);
+			blueprintsGraph.commit();
 			
 			tx = this.graph.beginTx();
 		}
@@ -297,7 +296,7 @@ public class Neo4jFGFIncrementalLoader {
 			}
 			
 			if (tx == null) {
-				blueprintsGraph.stopTransaction(Conclusion.SUCCESS);	
+				blueprintsGraph.commit();
 				tx = this.graph.beginTx();
 			}
 		}
@@ -428,7 +427,7 @@ public class Neo4jFGFIncrementalLoader {
 			}
 			
 			if (tx == null) {
-				blueprintsGraph.stopTransaction(Conclusion.SUCCESS);	
+				blueprintsGraph.commit();
 				tx = this.graph.beginTx();
 			}
 		}
