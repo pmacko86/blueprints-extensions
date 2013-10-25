@@ -21,8 +21,42 @@ optimized for Java in a way that it does not create any unnecessary Java
 objects while reading the data part of the file; it only instantiates objects
 for the metadata and when reading String-based or generic Object-based
 properties. By switching from a popular XML-based graph format, we decreased
-the loading time of a large 1 mil. node graph by an almost two orders of
+the loading time of a large 1 million node graph by almost two orders of
 magnitude.
+
+
+  Design Decisions
+--------------------
+
+FGF achieves this speedup in the following three ways: First and foremost, FGF
+is a binary format, so we save the overhead of string processing and parsing in
+Java, which is quite slow. Parsing allocates a large number of String objects
+on the heap, which must be then garbage collected. Strings in Java are
+immutable, so the parser cannot easily reuse them. This makes a lot of
+difference especially when compared to XML-based file formats.
+
+Second, FGF files are considerably smaller than human-readable files,
+especially (but not only) XML, which means that they can be read from disk much
+faster than the more conventional formats.
+
+Finally, the vertex and edge IDs are implicit. This further decreases the size
+of the file, which helps to some extent. But the real advantage of this is that
+this allows the ingest routines to map the IDs in the file to the corresponding
+IDs in the database using an array instead of (for example) a HashMap. We chose
+to do this because almost all database products that we used do not let the
+users to specify their own vertex or edge IDs, but the database assigns them
+automatically. If the database allows custom IDs, making the IDs implicit in
+the file is not necessary.
+
+Another design decision, which does not have as much effect on ingest
+performance, is to store the vertices and the edges of the same type together.
+The current implementation does not yet take an advantage of this, but we made
+this decision so that we can further optimize ingest to DEX in the future. On
+the other hand, this makes creating new FGF files more complicated and less
+efficient, because we first have to sort the vertices and edges by their
+respective types before writing them to the file. This is also the main reason
+why we need a separate metadata section of the file with all the counts. We
+might revisit this design decision in the next version of the file format.
 
 
   Features
@@ -32,6 +66,7 @@ FGF supports:
   - vertex types
   - edge types
   - typed properties
+  - ability to split a FGF file into two or more files
 
 
   Limitations
@@ -44,6 +79,8 @@ more concisely.
 
   File Format
 ---------------
+
+All integers are stored in the big-endian byte order.
 
 Header:
   4 bytes: "FGF" (3 bytes) and one byte for version, "1" for version 1
@@ -79,7 +116,7 @@ Attributes:
 
 Vertices:
   For each vertex type:
-    4 byte: "NODE"
+    4 bytes: "NODE"
     For each vertex of the given type:
       1 byte: the number of attributes (key-value pairs). If this number is
               greater than or equal to 0xFF (Byte.MAX_VALUE in Java), then
