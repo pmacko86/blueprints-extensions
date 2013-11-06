@@ -80,7 +80,8 @@ more concisely.
   File Format
 ---------------
 
-All integers are stored in the big-endian byte order.
+All integers are stored in the big-endian byte order. Strings are written
+by first writing a 2 byte length followed by UTF-8 encoded characters.
 
 Header:
   4 bytes: "FGF" (3 bytes) and one byte for version, "1" for version 1
@@ -90,6 +91,7 @@ Header:
   8 bytes: The initial edge ID
 
 Object counts:
+  4 bytes: "CNTS"
   8 bytes: The number of property types (e.g. "name", "age", etc.)
   8 bytes: The number of vertex types
   For each vertex type:
@@ -115,8 +117,9 @@ Attributes:
       - 0x21: double
 
 Vertices:
-  For each vertex type:
+  For each vertex type (stored using Java's ObjectOutputStream):
     4 bytes: "NODE"
+    UTF-8 encoded name of the vertex type
     For each vertex of the given type:
       1 byte: the number of attributes (key-value pairs). If this number is
               greater than or equal to 0xFF (Byte.MAX_VALUE in Java), then
@@ -128,8 +131,9 @@ Vertices:
         The attribute value according to its type.
 
 Edges:
-  For each edge type:
+  For each edge type (stored using Java's ObjectOutputStream):
     4 byte: "EDGE"
+    UTF-8 encoded name of the edge type
     For each edge of the given type:
       8 bytes: the head vertex ID
       8 bytes: the tail vertex ID
