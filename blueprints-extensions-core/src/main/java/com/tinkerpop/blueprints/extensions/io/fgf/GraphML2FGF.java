@@ -153,7 +153,7 @@ public class GraphML2FGF {
 
     				} else if (elementName.equals(GraphMLTokens.DATA)) {
     					String key = reader.getAttributeValue(null, GraphMLTokens.KEY);
-    					String attributeName = keyIdMap.get(key);
+    					String attributeName = keyIdMap.containsKey(key) ? keyIdMap.get(key) : key;
 
     					if (attributeName != null) {
     						String value = reader.getElementText();
